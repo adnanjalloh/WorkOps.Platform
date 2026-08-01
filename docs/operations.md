@@ -4,8 +4,8 @@
 
 - `/health/live` reports whether the process can serve requests and intentionally runs no dependency
   checks.
-- `/health/ready` runs registered readiness checks. The foundation has no external dependencies, so
-  this currently reports healthy when the application starts correctly.
+- `/health/ready` verifies PostgreSQL connectivity and reports unhealthy when persistence is not
+  available.
 
 ## Local commands
 

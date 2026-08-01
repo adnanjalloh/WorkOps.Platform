@@ -2,8 +2,10 @@
 
 ## Current scope
 
-The current milestone establishes a five-project modular-monolith boundary and proves its basic
-dependency direction. Business modules and external adapters are planned, not yet implemented.
+The current milestone establishes the five-project modular-monolith boundary and implements its
+first vertical platform capability: identity and tenant isolation. The API validates external JWTs,
+resolves an active workspace membership, establishes a request-scoped workspace context, and then
+uses tenant-filtered persistence for normal reads.
 
 | Project | Role | Allowed project dependencies |
 |---|---|---|
@@ -13,28 +15,48 @@ dependency direction. Business modules and external adapters are planned, not ye
 | `WorkOps.Contracts` | Versioned HTTP contracts | None |
 | `WorkOps.Api` | HTTP adapter and composition root | All projects |
 
-Architecture tests currently enforce the two highest-value negative rules: Domain has no project
-dependency, and Application cannot reference API or Infrastructure. More namespace and feature
-rules will be added with the first vertical slice.
+Architecture tests enforce that Domain has no project dependency, Application cannot reference API,
+Contracts, or Infrastructure, tenant-owned entities declare their ownership boundary, and every
+request string has a sanitization policy or an explicit skip reason.
 
-## Planned runtime containers
+## Current and planned runtime containers
 
 ```mermaid
 flowchart TB
     User["Authenticated API client"] --> Api["ASP.NET Core API"]
     Api --> Oidc["OIDC provider"]
     Api --> Db[("PostgreSQL")]
-    Api --> Cache[("Redis")]
-    Api --> Files["Private file storage"]
-    Worker["Outbox worker"] --> Db
-    Worker --> Broker["Message transport"]
+    Api -. planned .-> Cache[("Redis")]
+    Api -. planned .-> Files["Private file storage"]
+    Worker["Planned outbox worker"] -.-> Db
+    Worker -.-> Broker["Planned message transport"]
     Broker --> Notifications["Notification handler"]
     Api -. traces and metrics .-> Telemetry["OpenTelemetry collector"]
     Worker -. traces and metrics .-> Telemetry
 ```
 
-The current Docker Compose file intentionally runs only the API because the other dependencies are
-not implemented yet.
+Docker Compose currently runs the API, PostgreSQL, and a local identity provider with an imported
+synthetic realm. Redis, message transport, file storage, and telemetry remain future milestones.
+
+## Tenant request path
+
+```mermaid
+sequenceDiagram
+    actor Client
+    participant API
+    participant JWT as JWT validator
+    participant Access as Membership boundary
+    participant DB as PostgreSQL
+
+    Client->>API: Request + bearer token + workspace ID
+    API->>JWT: Validate issuer, audience, signature, lifetime, algorithm, subject
+    JWT-->>API: Validated subject
+    API->>Access: Resolve active membership for subject and workspace
+    Access->>DB: Deliberate unfiltered boundary query
+    Access-->>API: Role and workspace status
+    API->>DB: Tenant-filtered application query
+    API-->>Client: Resource, 403 suspended, or non-disclosing 404
+```
 
 ## Planned golden-scenario sequence
 
@@ -65,5 +87,5 @@ Conflict`, respectively.
 ## Decisions
 
 - [ADR 0001 - modular monolith](adr/0001-modular-monolith.md)
-- Tenant isolation, outbox delivery, identity-provider boundary, and file storage will each receive
-  an ADR when their implementation is introduced.
+- [ADR 0002 - tenant isolation](adr/0002-tenant-isolation.md)
+- Outbox delivery and file storage will each receive an ADR when introduced.

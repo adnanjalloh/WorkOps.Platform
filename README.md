@@ -7,11 +7,11 @@ A production-minded multi-tenant workflow API being built with ASP.NET Core and 
 
 ## Status
 
-**Foundation milestone - not yet a production release.** The repository currently provides a
-compilable modular-monolith skeleton, health endpoints, architecture boundary tests, a pinned
-container toolchain, and initial delivery/security documentation. Tenant isolation, OIDC,
-persistence, messaging, caching, file handling, and the golden scenario are explicitly planned
-and must not be treated as implemented yet. There is no hosted demo.
+**Tenant and identity milestone - not yet a production release.** The repository now provides a
+PostgreSQL-backed workspace boundary, strict JWT validation, verified membership context,
+permission policies, input sanitization, migrations, and container-backed isolation tests. The
+work-item flow, messaging, caching, file handling, observability, and full golden scenario remain
+planned. There is no hosted demo.
 
 ## Thirty-second overview
 
@@ -36,8 +36,9 @@ flowchart LR
     Infrastructure --> Domain
 ```
 
-See [architecture](docs/architecture.md) and
-[ADR 0001: modular monolith](docs/adr/0001-modular-monolith.md).
+See [architecture](docs/architecture.md),
+[ADR 0001: modular monolith](docs/adr/0001-modular-monolith.md), and
+[ADR 0002: tenant isolation](docs/adr/0002-tenant-isolation.md).
 
 ## Golden scenario
 
@@ -49,7 +50,7 @@ token. See [demo plan](docs/demo.md).
 
 ## Security highlights
 
-Implemented in the foundation:
+Implemented:
 
 - nullable analysis and recommended .NET analyzers with warnings treated as errors;
 - committed safe configuration only, with local-secret and key formats ignored;
@@ -57,6 +58,12 @@ Implemented in the foundation:
 - minimal GitHub Actions permissions and full commit-SHA action pins;
 - Gitleaks, dependency review, CodeQL, and NuGet audit configuration;
 - dependency-direction tests for the initial architecture.
+- strict JWT issuer, audience, signature, lifetime, subject, and algorithm validation;
+- workspace context derived from validated identity and active membership;
+- centralized role-to-permission mapping and endpoint authorization policies;
+- default-deny Entity Framework tenant filters with non-disclosing cross-workspace denial;
+- explicit input sanitization profiles and automated request-contract coverage;
+- PostgreSQL migrations and container-backed security regression tests.
 
 Planned controls are documented in [security](docs/security.md) and the
 [threat model](docs/threat-model.md). This project does not claim security certification.
@@ -97,8 +104,9 @@ dotnet build -c Release --no-restore
 dotnet test -c Release --no-build --logger "trx" --collect:"XPlat Code Coverage"
 ```
 
-The current tests are foundation checks: server liveness, identifier creation, assembly loading,
-and dependency direction. The full strategy and honest gaps are in [testing](docs/testing.md).
+The current 26 tests cover identifiers, input sanitization, permissions, dependency direction,
+request policy coverage, PostgreSQL tenant filters, JWT rejection, membership status, and
+cross-workspace denial. The full strategy and honest gaps are in [testing](docs/testing.md).
 
 ## Review paths
 
@@ -118,7 +126,7 @@ and dependency direction. The full strategy and honest gaps are in [testing](doc
 
 ## Roadmap
 
-- [ ] Tenant and identity boundary with cross-workspace tests
+- [x] Tenant and identity boundary with cross-workspace tests
 - [ ] Project/work-item vertical slice with optimistic concurrency
 - [ ] Transactional audit and outbox processing with idempotent notification delivery
 - [ ] Tenant-aware caching, feature limits, and secure file attachments

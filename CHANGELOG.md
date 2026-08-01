@@ -13,3 +13,8 @@ first release.
 - Unit, integration-smoke, functional, and architecture test projects.
 - Pinned container baseline and GitHub security/delivery automation.
 - Initial architecture, security, testing, demo, operations, and threat-model documentation.
+- PostgreSQL workspace, user, membership, and migration model.
+- Strict JWT authentication and role-based permission policies.
+- Verified request-scoped workspace context with default-deny tenant query filters.
+- Sanitization profiles with automated request-surface coverage.
+- Container-backed tenant-isolation and HTTP security regression tests.

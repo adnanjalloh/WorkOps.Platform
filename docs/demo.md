@@ -2,14 +2,25 @@
 
 ## Current demo
 
-The foundation exposes two unauthenticated operational endpoints only:
+The current milestone exposes two operational endpoints:
 
 ```text
 GET /health/live
 GET /health/ready
 ```
 
-Run the API locally and request `/health/live`. No business API or hosted demo is claimed yet.
+The authenticated workspace boundary also exposes:
+
+```text
+GET  /api/v1/me/
+GET  /api/v1/me/capabilities
+POST /api/v1/workspaces/
+GET  /api/v1/workspaces/{workspaceId}
+GET  /api/v1/workspaces/{workspaceId}/members
+```
+
+Run the Compose stack to use the local identity provider and PostgreSQL. The automated functional
+suite is the reproducible evidence for the current tenant scenario. No hosted demo is claimed yet.
 
 ## Planned golden scenario
 

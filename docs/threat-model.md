@@ -2,8 +2,8 @@
 
 ## Status and method
 
-This initial model defines the abuse cases that future vertical slices must address. Controls marked
-"planned" are not implemented claims. The model will be updated with each trust boundary.
+This model defines abuse cases for current and future vertical slices. Status is explicit so planned
+controls are not mistaken for implemented claims. The model is updated with each trust boundary.
 
 ## Assets
 
@@ -22,23 +22,25 @@ and deployment environment.
 
 ## Required abuse-case coverage
 
-| Abuse case | Planned control and evidence |
-|---|---|
-| Cross-workspace object access | Verified workspace context, tenant-required queries, non-disclosing denial, functional tests |
-| Forged, stolen, or malformed JWT | Strict validation, short lifetimes, provider boundary, negative token tests |
-| Privilege escalation | Central permission policies, resource checks, assignment ceiling, audit tests |
-| Replayed HTTP request | Scoped idempotency key plus canonical body hash and unique constraint |
-| Duplicate or reordered message | Deterministic message ID, inbox/uniqueness record, retry tests |
-| Malicious attachment | Size/type/signature allowlists, private storage, scanner port, download authorization |
-| Secret leakage in logs or CI | Structured allowlisted fields, redaction tests, Gitleaks, least-privilege workflows |
-| Cross-workspace cache collision | Typed tenant-aware keys, invalidation/versioning, isolation tests |
-| Mass assignment | Explicit contracts and mapping; no mutable tenant, role, audit, or ownership fields |
-| Resource exhaustion | Request limits, bounded pagination, rate limits, job retry ceilings |
-| Compromised CI action | Full commit-SHA pins, minimal token permissions, dependency review |
-| Over-privileged deployment identity | Workload identity, scoped roles, protected environments, auditable deploy job |
+| Abuse case | Status | Control and evidence |
+|---|---|---|
+| Cross-workspace object access | Implemented for workspace APIs | Verified context, default-deny filters, non-disclosing denial, PostgreSQL and functional tests |
+| Forged or malformed JWT | Implemented | Strict validation, provider boundary, missing-token and wrong-audience tests |
+| Stolen valid JWT | Partial | Short lifetime is validated; revocation and deployed-provider operations remain external concerns |
+| Privilege escalation | Partial | Central permission policies and endpoint checks exist; assignment ceiling and audit tests await membership management |
+| Replayed HTTP request | Planned | Scoped idempotency key plus canonical body hash and unique constraint |
+| Duplicate or reordered message | Planned | Deterministic message ID, inbox/uniqueness record, retry tests |
+| Malicious attachment | Planned | Size/type/signature allowlists, private storage, scanner port, download authorization |
+| Secret leakage in logs or CI | Partial | Input rejection logs metadata only; Gitleaks and least-privilege workflows exist; broader redaction tests remain |
+| Cross-workspace cache collision | Planned | Typed tenant-aware keys, invalidation/versioning, isolation tests |
+| Mass assignment | Implemented for current contracts | Explicit request contracts expose only workspace name and slug |
+| Resource exhaustion | Partial | Request bodies are capped; pagination, rate limits, and job retry ceilings remain |
+| Compromised CI action | Implemented baseline | Full commit-SHA pins, minimal token permissions, dependency review |
+| Over-privileged deployment identity | Planned | Workload identity, scoped roles, protected environments, auditable deploy job |
 
 ## Residual risk
 
-The foundation does not yet process business data or authentication tokens. Its principal current
-risks are supply-chain drift and future code failing to implement the planned boundaries. CI,
-reviewable increments, tests, and updated ADRs reduce but do not eliminate those risks.
+Application-level query filters are the current persistence backstop; PostgreSQL row-level security
+is deferred and must be reconsidered before sensitive tenant resources are introduced. The identity
+provider controls signing-key lifecycle and token revocation. CI, reviewable increments, tests, and
+updated ADRs reduce but do not eliminate supply-chain, configuration, or future-feature risk.

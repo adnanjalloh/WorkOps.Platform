@@ -21,11 +21,11 @@ public sealed class WorkOpsDbContext(
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(WorkOpsDbContext).Assembly);
 
         modelBuilder.Entity<Workspace>().HasQueryFilter(
-            workspace => workspaceContext.Current != null &&
-                         workspace.Id == workspaceContext.Current.WorkspaceId);
+            workspace => workspaceContext.CurrentWorkspaceId.HasValue &&
+                         workspace.Id == workspaceContext.CurrentWorkspaceId.GetValueOrDefault());
 
         modelBuilder.Entity<WorkspaceMembership>().HasQueryFilter(
-            membership => workspaceContext.Current != null &&
-                          membership.WorkspaceId == workspaceContext.Current.WorkspaceId);
+            membership => workspaceContext.CurrentWorkspaceId.HasValue &&
+                          membership.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault());
     }
 }

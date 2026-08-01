@@ -2,11 +2,11 @@
 
 ## Honest status
 
-This is the security design baseline for a pre-release portfolio project. Only controls identified
-as implemented below exist in code today. The document is informed by OWASP guidance but makes no
+This is the security baseline for a pre-release portfolio project. Only controls identified as
+implemented below exist in code today. The document is informed by OWASP guidance but makes no
 certification claim.
 
-## Implemented in the foundation
+## Implemented
 
 - nullable reference analysis, recommended .NET analyzers, and warnings as errors;
 - explicit health endpoints and centralized Problem Details registration;
@@ -17,18 +17,22 @@ certification claim.
 - GitHub Actions with read-only default permissions and third-party actions pinned to full commits;
 - configured secret, dependency, and static-analysis workflows;
 - clean dependency boundaries checked by tests.
+- strict bearer-token validation for issuer, audience, signature, expiration, accepted algorithms,
+  and the required `sub` claim;
+- workspace context selected only from a route or header and accepted only after active membership
+  lookup for the validated subject;
+- centralized role permissions and policy-based authorization on tenant endpoints;
+- non-disclosing `404` for absent or cross-workspace membership and `403` for suspended workspaces;
+- default-deny tenant query filters for workspaces and memberships, including the no-context case;
+- named sanitization profiles on request surfaces, bounded request bodies, safe error responses, and
+  logging that records metadata rather than submitted values;
+- PostgreSQL-backed tests for tenant filtering plus HTTP tests for token rejection, cross-workspace
+  denial, inactive membership, suspension, capabilities, and malicious input.
 
 ## Required before the first release
 
-- validate JWT issuer, audience, signature, lifetime, and accepted algorithms through a
-  provider-neutral OIDC boundary;
-- derive workspace context from validated identity plus verified membership, never a body field;
-- centralize permissions and use resource-level authorization;
-- validate, bound, and map every external contract explicitly;
-- define a sanitization policy for each new input surface and never log raw submitted values;
 - keep tenant identifiers in database rows, cache keys, file paths, messages, audit events, and
   idempotency records;
-- return safe RFC 9457-style Problem Details without stack traces or policy internals;
 - allowlist upload types, inspect signatures, generate server-side names, and authorize downloads;
 - add request-size limits, explicit CORS, HTTPS enforcement in deployed environments, rate limits,
   and production-safe OpenAPI behavior;

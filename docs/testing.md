@@ -2,31 +2,33 @@
 
 ## Current evidence
 
-The foundation includes four test projects with a deliberately small evidence set:
+The tenant and identity milestone includes four test projects with 26 tests:
 
-- Unit: server-generated workspace identifiers are non-empty and unique.
-- Integration smoke: the Infrastructure assembly loads with the expected identity.
-- Functional: an in-memory ASP.NET Core host returns healthy from `/health/live`.
-- Architecture: Domain has no project dependencies and Application cannot reference API or
-  Infrastructure.
+- Unit: workspace identifiers, sanitization malicious corpus, role permissions, and one-time context
+  establishment.
+- Integration: real PostgreSQL migrations and default-deny query filters, including switching
+  between two workspaces.
+- Functional: real PostgreSQL plus the ASP.NET Core host, locally signed test JWTs, token rejection,
+  cross-workspace denial, permissions, suspension, inactive membership, and malicious input.
+- Architecture: dependency direction, request sanitization-policy coverage, and tenant-owned entity
+  classification.
 
-These tests prove only the foundation. They do not yet prove persistence, tenant isolation,
-authorization, messaging, caching, file storage, or production readiness.
+These tests prove the implemented identity and workspace boundary. They do not yet prove the future
+work-item flow, messaging, caching, file storage, observability, or production readiness.
 
 ## Planned suites
 
-- Unit tests for state transitions, permission calculation, feature limits, upload validation,
-  backoff, and injected time.
-- PostgreSQL integration tests for mappings, migrations, tenant filters, concurrency, outbox locks,
-  and idempotency.
+- Unit tests for work-item state transitions, feature limits, upload validation, backoff, and
+  injected time.
+- Additional PostgreSQL integration tests for concurrency, outbox locks, and idempotency.
 - Redis and message-transport integration tests for tenant-safe keys and duplicate handling.
 - Functional tests for the golden scenario, realistic tokens, Problem Details, denial paths,
   concurrency conflicts, idempotency mismatch, and rate limiting.
 - Security regression tests for invalid tokens, privilege escalation, hostile uploads, oversized
   requests, safe logs/errors, CORS, and production OpenAPI behavior.
 
-Container-backed suites will use real supported providers rather than mocked database behavior.
-Time-dependent tests will use `TimeProvider`; tests will not depend on sleeps or local time.
+Container-backed suites use supported providers rather than mocked database behavior. Time-dependent
+tests use `TimeProvider`; tests do not depend on sleeps or local time.
 
 ## Commands
 
