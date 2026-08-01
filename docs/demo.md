@@ -1,6 +1,6 @@
 # Golden-scenario demo
 
-## What it proves
+## What it exercises
 
 The live demo runs against the same PostgreSQL, Redis, RabbitMQ, Keycloak, and API adapters used by
 Docker Compose. It uses only synthetic local users and data, and checks:
@@ -15,7 +15,7 @@ Docker Compose. It uses only synthetic local users and data, and checks:
 8. cross-workspace lookup denial as a non-disclosing `404`;
 9. visible safe transition audit and outbox-delivered notification.
 
-Tokens remain in process memory and are never printed or written. The saved state contains only
+Tokens are not intentionally printed or persisted by the scripts. The saved state contains only
 synthetic resource IDs and opaque versions.
 
 ## Run it
@@ -35,6 +35,9 @@ PowerShell prerequisite: Docker Desktop and PowerShell 7.
 The first Keycloak import can take up to two minutes. The scripts save successful IDs under the
 ignored `.local/` directory. A repeat run reuses those IDs, verifies the current work item, and
 rechecks the stale-write and outsider boundaries without duplicating records.
+
+> This stack is for a local, single-user demonstration. API and identity ports bind to loopback;
+> PostgreSQL, RabbitMQ, and Redis are reachable only through the private Compose network.
 
 Environment overrides:
 

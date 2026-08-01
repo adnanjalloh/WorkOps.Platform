@@ -4,9 +4,7 @@ services:
     environment:
       POSTGRES_DB: workops
       POSTGRES_USER: workops
-      POSTGRES_PASSWORD: ${WORKOPS_DB_PASSWORD:-local-development-only}
-    ports:
-      - "${WORKOPS_DB_PORT:-5432}:5432"
+      POSTGRES_PASSWORD: ${WORKOPS_DB_PASSWORD:-local-db-only}
     volumes:
       - workops-postgres:/var/lib/postgresql
     healthcheck:
@@ -22,12 +20,12 @@ services:
     command: ["start-dev", "--import-realm"]
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${WORKOPS_IDENTITY_ADMIN:-local-admin}
-      KC_BOOTSTRAP_ADMIN_PASSWORD: ${WORKOPS_IDENTITY_ADMIN_PASSWORD:-local-development-only}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${WORKOPS_IDENTITY_ADMIN_PASSWORD:-local-identity-admin-only}
       KC_HEALTH_ENABLED: "true"
       KC_HOSTNAME: http://localhost:${WORKOPS_IDENTITY_PORT:-8081}
       KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
     ports:
-      - "${WORKOPS_IDENTITY_PORT:-8081}:8080"
+      - "127.0.0.1:${WORKOPS_IDENTITY_PORT:-8081}:8080"
     volumes:
       - ./infra/keycloak/workops-realm.json:/opt/keycloak/data/import/workops-realm.json:ro
     security_opt:
@@ -37,9 +35,7 @@ services:
     image: rabbitmq:4.3.4-alpine
     environment:
       RABBITMQ_DEFAULT_USER: workops
-      RABBITMQ_DEFAULT_PASS: ${WORKOPS_RABBITMQ_PASSWORD:-local-development-only}
-    ports:
-      - "${WORKOPS_RABBITMQ_PORT:-5672}:5672"
+      RABBITMQ_DEFAULT_PASS: ${WORKOPS_RABBITMQ_PASSWORD:-local-rabbit-only}
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 5s
@@ -52,9 +48,7 @@ services:
     image: redis:8.8.1-alpine
     command: ["sh", "-c", "exec redis-server --requirepass \"$${REDIS_PASSWORD}\""]
     environment:
-      REDIS_PASSWORD: ${WORKOPS_REDIS_PASSWORD:-local-development-only}
-    ports:
-      - "${WORKOPS_REDIS_PORT:-6379}:6379"
+      REDIS_PASSWORD: ${WORKOPS_REDIS_PASSWORD:-local-redis-only}
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep PONG"]
       interval: 5s
@@ -75,8 +69,8 @@ services:
       Authentication__Issuer: http://localhost:${WORKOPS_IDENTITY_PORT:-8081}/realms/workops
       Authentication__MetadataAddress: http://identity:8080/realms/workops/.well-known/openid-configuration
       Authentication__RequireHttpsMetadata: "false"
-      ConnectionStrings__WorkOps: Host=postgres;Port=5432;Database=workops;Username=workops;Password=${WORKOPS_DB_PASSWORD:-local-development-only};Include Error Detail=false
-      ConnectionStrings__Redis: redis:6379,password=${WORKOPS_REDIS_PASSWORD:-local-development-only},abortConnect=false
+      ConnectionStrings__WorkOps: Host=postgres;Port=5432;Database=workops;Username=workops;Password=${WORKOPS_DB_PASSWORD:-local-db-only};Include Error Detail=false
+      ConnectionStrings__Redis: redis:6379,password=${WORKOPS_REDIS_PASSWORD:-local-redis-only},abortConnect=false
       Cache__Enabled: "true"
       Files__DevelopmentScannerEnabled: "true"
       Files__RootPath: /tmp/workops-attachments
@@ -85,7 +79,7 @@ services:
       Messaging__Port: 5672
       Messaging__VirtualHost: /
       Messaging__UserName: workops
-      Messaging__Password: ${WORKOPS_RABBITMQ_PASSWORD:-local-development-only}
+      Messaging__Password: ${WORKOPS_RABBITMQ_PASSWORD:-local-rabbit-only}
       Operations__ApplyMigrations: "true"
     depends_on:
       postgres:
@@ -97,7 +91,7 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - "${WORKOPS_HTTP_PORT:-8080}:8080"
+      - "127.0.0.1:${WORKOPS_HTTP_PORT:-8080}:8080"
     read_only: true
     tmpfs:
       - /tmp

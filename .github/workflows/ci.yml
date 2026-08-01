@@ -67,6 +67,9 @@ jobs:
       - name: Audit NuGet dependencies
         run: dotnet list package --vulnerable --include-transitive
 
+      - name: Validate local Compose boundary
+        run: scripts/check-compose-security.sh
+
       - name: Scan Git history for secrets
         uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
