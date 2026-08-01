@@ -62,7 +62,7 @@ flowchart LR
     Worker -. optional OTLP .-> Telemetry
 ```
 
-The five production projects keep HTTP contracts, use cases, invariants, and adapters separate.
+The five application projects keep HTTP contracts, use cases, invariants, and adapters separate.
 Architecture tests enforce dependency direction, model-driven tenant filter/write-resolver coverage,
 public contract isolation, workflow checkout policy, and sanitization coverage. Persistence rejects
 writes to every tenant-filtered type—including the `Workspace` root—unless its metadata-resolved
