@@ -30,9 +30,9 @@ internal sealed class OutboxBacklogMonitor(
             {
                 return;
             }
-            catch (Exception)
+            catch (Exception exception)
             {
-                LogMonitorError(logger, null);
+                LogMonitorError(logger, exception);
             }
 
             if (!await timer.WaitForNextTickAsync(stoppingToken))

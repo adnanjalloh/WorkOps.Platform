@@ -32,10 +32,12 @@ the project-write policy before the stored response is read.
   in deliberately with their own canonical request definition.
 - Successful response JSON is tenant-owned application data and follows the same database access
   controls as the project.
-- An expiry index supports scheduled deletion, but the portfolio release does not run a purge worker.
+- A bounded hosted worker deletes expired rows across tenants through an isolated operator-only store;
+  normal request stores remain tenant-filtered and the worker uses `SKIP LOCKED` batches.
 - The response represents the original creation result, even if the project is later changed.
 
 ## Evidence
 
 Functional tests check exact replay, one project-slot consumption, changed-body rejection, separate
-tenant/user scopes, one persisted record per scope, and safe Problem Details.
+tenant/user scopes, one persisted record per scope, safe Problem Details, and bounded cross-tenant
+retention that preserves unexpired rows.

@@ -14,6 +14,9 @@ first release.
 - Scheduled/manual full-Compose golden-scenario verification with retained sanitized evidence.
 - Exact business-constraint race mapping and atomic identity/workspace provisioning.
 - Corrupt-cache recovery and attachment storage integrity/reconciliation handling.
+- Trusted-proxy forwarding, release-derived telemetry versions, and explicit OTLP transport policy.
+- Safe operator exception diagnostics for outbox and notification workers.
+- Bounded idempotency-record retention with cross-tenant maintenance isolation and metrics.
 - Clean-room .NET 10 modular-monolith foundation.
 - Health endpoints and initial functional test.
 - Unit, integration-smoke, functional, and architecture test projects.

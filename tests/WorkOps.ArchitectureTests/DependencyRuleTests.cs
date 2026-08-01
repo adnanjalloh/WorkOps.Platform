@@ -93,6 +93,44 @@ public sealed class DependencyRuleTests
         CollectionAssert.AreEqual(Array.Empty<string>(), offenders);
     }
 
+    [TestMethod]
+    public void Docker_context_excludes_sensitive_local_artifacts()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var dockerIgnore = File.ReadAllLines(Path.Combine(repositoryRoot, ".dockerignore"))
+            .Select(static line => line.TrimEnd('/'))
+            .ToHashSet(StringComparer.Ordinal);
+        var requiredPatterns = new[]
+        {
+            ".env",
+            ".env.*",
+            "**/secrets.json",
+            "*.pem",
+            "*.key",
+            "*.pfx",
+            "*.p12",
+            "*.jks",
+            ".terraform",
+            "*.tfstate",
+            "*.tfstate.*",
+            "*.tfplan",
+            "terraform.tfvars",
+            "terraform.tfvars.json",
+            "crash.log",
+            ".local",
+            ".vs",
+            ".idea",
+            "*.log",
+            "logs",
+            "artifacts",
+        };
+        var missingPatterns = requiredPatterns
+            .Where(pattern => !dockerIgnore.Contains(pattern))
+            .ToArray();
+
+        CollectionAssert.AreEqual(Array.Empty<string>(), missingPatterns);
+    }
+
     private static string[] ReferencedWorkOpsAssemblies(Assembly assembly) =>
         assembly
             .GetReferencedAssemblies()
@@ -101,4 +139,19 @@ public sealed class DependencyRuleTests
             .Select(static name => name!)
             .Order(StringComparer.Ordinal)
             .ToArray();
+
+    private static string FindRepositoryRoot()
+    {
+        for (var directory = new DirectoryInfo(AppContext.BaseDirectory);
+             directory is not null;
+             directory = directory.Parent)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "WorkOps.Platform.slnx")))
+            {
+                return directory.FullName;
+            }
+        }
+
+        throw new DirectoryNotFoundException("The repository root could not be located.");
+    }
 }

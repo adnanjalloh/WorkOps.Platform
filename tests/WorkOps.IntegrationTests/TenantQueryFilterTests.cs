@@ -19,6 +19,7 @@ using WorkOps.Application.Tenancy;
 using WorkOps.Domain.Audit;
 using WorkOps.Domain.Common;
 using WorkOps.Domain.Features;
+using WorkOps.Domain.Idempotency;
 using WorkOps.Domain.Identity;
 using WorkOps.Domain.Messaging;
 using WorkOps.Domain.Projects;
@@ -726,6 +727,59 @@ public sealed class TenantQueryFilterTests
     }
 
     [TestMethod]
+    public async Task Idempotency_retention_purges_expired_rows_in_cross_tenant_batches()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var suffix = Guid.NewGuid().ToString("N");
+        var user = ApplicationUser.Create(
+            $"integration|retention-{suffix}",
+            "Retention User",
+            now);
+        var first = Workspace.Create("Retention First", $"retention-first-{suffix}", now);
+        var second = Workspace.Create("Retention Second", $"retention-second-{suffix}", now);
+        var seedAccessor = new WorkspaceContextAccessor();
+        await using (var seed = CreateDbContext(seedAccessor))
+        {
+            seed.Users.Add(user);
+            seed.Workspaces.AddRange(first, second);
+            using (seedAccessor.BeginProvisioning(first.Id))
+            {
+                seed.WorkspaceMemberships.Add(
+                    WorkspaceMembership.Create(first.Id, user.Id, WorkspaceRole.Owner, now));
+                seed.IdempotencyRecords.AddRange(
+                    CreateIdempotencyRecord(first.Id, user.Id, $"first-a-{suffix}", now.AddMinutes(-2)),
+                    CreateIdempotencyRecord(first.Id, user.Id, $"first-b-{suffix}", now.AddMinutes(-1)),
+                    CreateIdempotencyRecord(first.Id, user.Id, $"current-{suffix}", now.AddHours(1)));
+                await seed.SaveChangesAsync();
+            }
+
+            using (seedAccessor.BeginProvisioning(second.Id))
+            {
+                seed.WorkspaceMemberships.Add(
+                    WorkspaceMembership.Create(second.Id, user.Id, WorkspaceRole.Owner, now));
+                seed.IdempotencyRecords.Add(
+                    CreateIdempotencyRecord(second.Id, user.Id, $"second-{suffix}", now.AddMinutes(-1)));
+                await seed.SaveChangesAsync();
+            }
+        }
+
+        await using var provider = CreateServices(enableMessaging: false);
+        await using var scope = provider.CreateAsyncScope();
+        var maintenance = scope.ServiceProvider.GetRequiredService<IIdempotencyMaintenanceStore>();
+        var firstBatch = await maintenance.PurgeExpiredBatchAsync(now, 2, CancellationToken.None);
+        var secondBatch = await maintenance.PurgeExpiredBatchAsync(now, 2, CancellationToken.None);
+
+        Assert.AreEqual(2, firstBatch);
+        Assert.AreEqual(1, secondBatch);
+        await using var verify = CreateDbContext(new WorkspaceContextAccessor());
+        Assert.AreEqual(
+            1,
+            await verify.IdempotencyRecords
+                .IgnoreQueryFilters()
+                .CountAsync(record => record.UserId == user.Id));
+    }
+
+    [TestMethod]
     public async Task Local_file_storage_uses_separate_tenant_directories()
     {
         var fileRoot = Path.Combine(
@@ -834,6 +888,22 @@ public sealed class TenantQueryFilterTests
         "InProgress",
         occurredAt,
         "integration-test");
+
+    private static IdempotencyRecord CreateIdempotencyRecord(
+        WorkOps.Domain.WorkspaceId workspaceId,
+        Guid userId,
+        string key,
+        DateTimeOffset expiresAt) => IdempotencyRecord.Create(
+        workspaceId,
+        userId,
+        "POST",
+        "/api/v1/projects",
+        key,
+        new string('A', 64),
+        201,
+        "{}",
+        expiresAt.AddHours(-24),
+        expiresAt);
 
     private static WorkOpsDbContext CreateDbContext(WorkspaceContextAccessor accessor)
     {

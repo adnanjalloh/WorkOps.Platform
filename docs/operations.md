@@ -70,20 +70,29 @@ Every response returns `X-Correlation-Id`; Problem Details also include `correla
 Core, outbound HTTP, PostgreSQL, and `WorkOps.Messaging`. Audit and message rows retain the same
 server-generated correlation identifier where the business transaction records one.
 
-Set `Observability:Otlp:Enabled=true` and an absolute HTTP(S) `Observability:Otlp:Endpoint` to export
-traces and metrics. The application reports request and runtime metrics plus low-cardinality cache,
-message result, outbox duration, and outbox backlog instruments. Do not add user IDs, email, tokens,
-work-item titles, raw URLs, or submitted values as labels.
+Set `Observability:Otlp:Enabled=true` and an absolute HTTPS `Observability:Otlp:Endpoint` to export
+traces and metrics. Optional exporter headers are accepted only over HTTPS. Cleartext OTLP requires
+the explicit `AllowInsecureTransport` setting and, in production, is limited to a loopback, private,
+single-label, or `.internal` collector. Export is disabled by default. Service, meter, and activity-
+source versions come from the assembly informational version set by the release build. Do not add
+user IDs, email, tokens, work-item titles, raw URLs, or submitted values as labels.
 
 Rate limiting defaults to 60 requests per 60 seconds per authenticated subject, or per remote IP
 before authentication. Health endpoints are exempt. `Cors:AllowedOrigins` is empty by default;
 production origins must be explicit HTTPS origins. OpenAPI JSON is available only in Development at
 `/openapi/v1.json`; no interactive UI is installed.
 
+Forwarded headers are disabled by default. When the API is behind a reverse proxy, enable
+`ForwardedHeaders:Enabled` only with a bounded `ForwardLimit` and explicit `KnownProxies` IP addresses
+or `KnownNetworks` CIDR ranges. The middleware processes only forwarded client IP and scheme, before
+HTTPS redirection and rate limiting; headers from every other source are ignored.
+
 Project creation supports an optional `Idempotency-Key` header. Exact retries return the stored
 `201` response and `Idempotency-Replayed: true`; changed input returns
-`idempotency_key_conflict`. Records expire after 24 hours and an expiry index supports a future
-scheduled purge.
+`idempotency_key_conflict`. Records expire after 24 hours. A hosted retention worker purges expired
+rows in `SKIP LOCKED` batches, caps batches per run, and emits low-cardinality result and purged-row
+metrics. `Idempotency:PurgeBatchSize`, `PurgeIntervalMinutes`, and `MaximumBatchesPerRun` are bounded;
+disabling the worker requires an equivalent operator retention process.
 
 Run a conservative authenticated local smoke check without printing the token:
 

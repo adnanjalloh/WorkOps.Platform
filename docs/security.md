@@ -62,11 +62,14 @@ certification claim.
 - server-generated correlation/trace identifiers in headers and Problem Details, with caller input
   excluded from the correlation scope;
 - Serilog JSON events that use structured properties, log input-rejection metadata rather than
-  values, and omit exception/provider details from background retry warnings;
+  values, and retain background exception diagnostics with only allowlisted message identifiers,
+  types, and outcomes;
 - OpenTelemetry instrumentation without user IDs, email, tokens, titles, or submitted values in
-  custom metric labels; OTLP export is disabled by default;
+  custom metric labels; versions derive from the release build, OTLP export is disabled by default,
+  and production transport requires HTTPS or explicit internal-only cleartext opt-in;
 - deny-by-default CORS, fixed-window user/IP rate limiting, request-header and body bounds, HSTS and
-  HTTPS redirection outside development/test, API security headers, and no server header;
+  HTTPS redirection outside development/test, explicit trusted-proxy forwarding, API security
+  headers, and no server header;
 - runtime OpenAPI document exposure only in Development, with no Swagger UI installed;
 - optional project-create idempotency scoped by tenant, authenticated user, method, route, and key;
   request hashes prevent key reuse with changed input and the database primary key protects the
@@ -92,8 +95,8 @@ declared local-only password.
 - redact credentials, authorization headers, personal data, and user-controlled content from logs;
 - keep cross-workspace denial, privilege boundaries, upload rejection, JWT rejection, and log/error
   redaction in the automated regression suites;
-- configure trusted reverse-proxy forwarding deliberately when TLS terminates before the process;
-  do not accept forwarded headers from arbitrary networks.
+- configure the disabled-by-default forwarded-header trust list for the deployment proxy/network
+  when TLS terminates before the process.
 
 ## Secrets
 

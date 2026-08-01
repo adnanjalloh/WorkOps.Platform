@@ -2,6 +2,7 @@ using System.Diagnostics.Metrics;
 using System.Text.Json;
 using StackExchange.Redis;
 using WorkOps.Application.Abstractions;
+using WorkOps.Application.Common;
 using WorkOps.Application.Features;
 using WorkOps.Domain;
 
@@ -10,7 +11,7 @@ namespace WorkOps.Infrastructure.Features;
 internal sealed class RedisFeatureCache(IConnectionMultiplexer connection) : IFeatureCache
 {
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
-    private static readonly Meter Meter = new("WorkOps.Cache", "1.0.0");
+    private static readonly Meter Meter = new("WorkOps.Cache", BuildVersion.Current);
     private static readonly Counter<long> CacheResults = Meter.CreateCounter<long>("workops.cache.results");
 
     public async Task<FeatureSnapshot> GetOrCreateAsync(

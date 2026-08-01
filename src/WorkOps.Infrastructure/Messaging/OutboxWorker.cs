@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using WorkOps.Application.Common;
 using WorkOps.Application.Messaging;
 
 namespace WorkOps.Infrastructure.Messaging;
@@ -10,7 +11,9 @@ internal sealed class OutboxWorker(
     IServiceScopeFactory scopeFactory,
     ILogger<OutboxWorker> logger) : BackgroundService
 {
-    private static readonly ActivitySource ActivitySource = new("WorkOps.Messaging", "1.0.0");
+    private static readonly ActivitySource ActivitySource = new(
+        "WorkOps.Messaging",
+        BuildVersion.Current);
     private static readonly Action<ILogger, string, Exception?> LogResult =
         LoggerMessage.Define<string>(
             LogLevel.Information,
@@ -48,9 +51,9 @@ internal sealed class OutboxWorker(
             {
                 return;
             }
-            catch (Exception)
+            catch (Exception exception)
             {
-                LogWorkerError(logger, null);
+                LogWorkerError(logger, exception);
                 await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
             }
         }

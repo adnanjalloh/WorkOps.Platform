@@ -18,6 +18,21 @@ internal sealed class RabbitMqNotificationConsumer(
             LogLevel.Information,
             new EventId(2002, "NotificationConsumerState"),
             "Notification consumer state changed to {State}");
+    private static readonly Action<ILogger, Exception?> LogConnectionError =
+        LoggerMessage.Define(
+            LogLevel.Warning,
+            new EventId(2005, "NotificationConsumerConnectionError"),
+            "Notification consumer connection failed; retrying");
+    private static readonly Action<ILogger, string, string, Exception?> LogMessageRejected =
+        LoggerMessage.Define<string, string>(
+            LogLevel.Warning,
+            new EventId(2006, "NotificationMessageRejected"),
+            "Notification message {MessageId} of type {MessageType} was rejected");
+    private static readonly Action<ILogger, string, string, string, Exception?> LogHandlerError =
+        LoggerMessage.Define<string, string, string>(
+            LogLevel.Error,
+            new EventId(2007, "NotificationHandlerError"),
+            "Notification message {MessageId} of type {MessageType} failed with {Result}");
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -31,9 +46,9 @@ internal sealed class RabbitMqNotificationConsumer(
             {
                 return;
             }
-            catch (Exception)
+            catch (Exception exception)
             {
-                LogState(logger, "connection_retry", null);
+                LogConnectionError(logger, exception);
                 await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
             }
         }
@@ -53,6 +68,15 @@ internal sealed class RabbitMqNotificationConsumer(
         {
             var payloadJson = System.Text.Encoding.UTF8.GetString(delivery.Body.Span);
             var messageType = delivery.BasicProperties.Type ?? string.Empty;
+            var safeMessageId = Guid.TryParse(delivery.BasicProperties.MessageId, out var messageId)
+                ? messageId.ToString("D")
+                : "invalid";
+            var safeMessageType = string.Equals(
+                messageType,
+                WorkItemStatusChangedMessage.MessageType,
+                StringComparison.Ordinal)
+                ? WorkItemStatusChangedMessage.MessageType
+                : "unsupported";
             try
             {
                 await using var scope = scopeFactory.CreateAsyncScope();
@@ -64,19 +88,22 @@ internal sealed class RabbitMqNotificationConsumer(
                 MessagingMetrics.RecordNotification(delivered ? "delivered" : "duplicate");
                 await channel.BasicAckAsync(delivery.DeliveryTag, false, cancellationToken);
             }
-            catch (RequestValidationException)
+            catch (RequestValidationException exception)
             {
                 MessagingMetrics.RecordNotification("invalid");
+                LogMessageRejected(logger, safeMessageId, safeMessageType, exception);
                 await channel.BasicNackAsync(
                     delivery.DeliveryTag,
                     multiple: false,
                     requeue: false,
                     cancellationToken);
             }
-            catch (Exception) when (!cancellationToken.IsCancellationRequested)
+            catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
             {
                 var requeue = !delivery.Redelivered;
-                MessagingMetrics.RecordNotification(requeue ? "retry" : "failed");
+                var result = requeue ? "retry" : "failed";
+                MessagingMetrics.RecordNotification(result);
+                LogHandlerError(logger, safeMessageId, safeMessageType, result, exception);
                 await channel.BasicNackAsync(
                     delivery.DeliveryTag,
                     multiple: false,

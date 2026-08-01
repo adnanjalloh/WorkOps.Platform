@@ -6,13 +6,18 @@ using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using WorkOps.Api.Operations;
 using WorkOps.Application.Abstractions;
 using WorkOps.Application.Audit;
 using WorkOps.Application.Messaging;
@@ -855,6 +860,99 @@ public sealed class TenantIdentityEndpointTests
         Assert.AreEqual(HttpStatusCode.NotFound, openApi.StatusCode);
     }
 
+    [TestMethod]
+    public async Task Forwarded_headers_accept_only_the_configured_proxy()
+    {
+        var trustedProxy = System.Net.IPAddress.Parse("10.0.0.5");
+        var clientAddress = System.Net.IPAddress.Parse("203.0.113.9");
+        var options = Options.Create(new Microsoft.AspNetCore.Builder.ForwardedHeadersOptions
+        {
+            ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+            ForwardLimit = 1,
+        });
+        options.Value.KnownProxies.Clear();
+        options.Value.KnownIPNetworks.Clear();
+        options.Value.KnownProxies.Add(trustedProxy);
+
+        static Task Next(HttpContext context)
+        {
+            context.Response.StatusCode = StatusCodes.Status204NoContent;
+            return Task.CompletedTask;
+        }
+
+        var middleware = new ForwardedHeadersMiddleware(
+            Next,
+            NullLoggerFactory.Instance,
+            options);
+        var trustedContext = new DefaultHttpContext();
+        trustedContext.Connection.RemoteIpAddress = trustedProxy;
+        trustedContext.Request.Scheme = "http";
+        trustedContext.Request.Headers["X-Forwarded-For"] = clientAddress.ToString();
+        trustedContext.Request.Headers["X-Forwarded-Proto"] = "https";
+
+        await middleware.Invoke(trustedContext);
+
+        Assert.AreEqual(clientAddress, trustedContext.Connection.RemoteIpAddress);
+        Assert.AreEqual("https", trustedContext.Request.Scheme);
+
+        var untrustedContext = new DefaultHttpContext();
+        var untrustedProxy = System.Net.IPAddress.Parse("10.0.0.6");
+        untrustedContext.Connection.RemoteIpAddress = untrustedProxy;
+        untrustedContext.Request.Scheme = "http";
+        untrustedContext.Request.Headers["X-Forwarded-For"] = clientAddress.ToString();
+        untrustedContext.Request.Headers["X-Forwarded-Proto"] = "https";
+
+        await middleware.Invoke(untrustedContext);
+
+        Assert.AreEqual(untrustedProxy, untrustedContext.Connection.RemoteIpAddress);
+        Assert.AreEqual("http", untrustedContext.Request.Scheme);
+    }
+
+    [TestMethod]
+    public void Production_rejects_forwarding_without_a_trusted_source()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Authentication:RequireHttpsMetadata"] = "true",
+                ["Files:DevelopmentScannerEnabled"] = "false",
+                ["ForwardedHeaders:Enabled"] = "true",
+            })
+            .Build();
+
+        var exception = Assert.ThrowsExactly<InvalidOperationException>(
+            () => ProductionConfiguration.Validate(
+                configuration,
+                new TestHostEnvironment("Production")));
+
+        StringAssert.Contains(exception.Message, "explicit trusted proxy", StringComparison.Ordinal);
+    }
+
+    [TestMethod]
+    public void Production_rejects_insecure_otlp_without_an_internal_opt_in()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Authentication:RequireHttpsMetadata"] = "true",
+                ["Files:DevelopmentScannerEnabled"] = "false",
+                ["Observability:Otlp:Enabled"] = "true",
+                ["Observability:Otlp:Endpoint"] = "http://telemetry.example.com:4317",
+                ["Observability:Otlp:AllowInsecureTransport"] = "true",
+            })
+            .Build();
+
+        var exception = Assert.ThrowsExactly<InvalidOperationException>(
+            () => ProductionConfiguration.Validate(
+                configuration,
+                new TestHostEnvironment("Production")));
+
+        StringAssert.Contains(
+            exception.Message,
+            "trusted internal collector",
+            StringComparison.Ordinal);
+    }
+
     private static HttpClient CreateClient() => _factory.CreateClient(
         new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
@@ -1052,5 +1150,16 @@ public sealed class TenantIdentityEndpointTests
     {
         using var problem = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
         Assert.AreEqual(expectedCode, problem.RootElement.GetProperty("code").GetString());
+    }
+
+    private sealed class TestHostEnvironment(string environmentName) : IHostEnvironment
+    {
+        public string EnvironmentName { get; set; } = environmentName;
+
+        public string ApplicationName { get; set; } = "WorkOps.FunctionalTests";
+
+        public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
+
+        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
     }
 }

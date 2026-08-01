@@ -43,7 +43,37 @@ public static class DependencyInjection
         services.AddScoped<INotificationStore, NotificationStore>();
         services.AddScoped<IWorkspaceSubscriptionStore, WorkspaceSubscriptionStore>();
         services.AddScoped<IAttachmentStore, AttachmentStore>();
-        services.AddScoped<IIdempotencyStore, IdempotencyStore>();
+        services.AddScoped<IdempotencyStore>();
+        services.AddScoped<IIdempotencyStore>(
+            provider => provider.GetRequiredService<IdempotencyStore>());
+        services.AddScoped<IIdempotencyMaintenanceStore>(
+            provider => provider.GetRequiredService<IdempotencyStore>());
+        var purgeEnabled = !bool.TryParse(
+            configuration["Idempotency:PurgeEnabled"],
+            out var configuredPurgeEnabled) || configuredPurgeEnabled;
+        if (purgeEnabled)
+        {
+            var intervalMinutes = ParseInteger(
+                configuration["Idempotency:PurgeIntervalMinutes"],
+                60);
+            var batchSize = ParseInteger(configuration["Idempotency:PurgeBatchSize"], 500);
+            var maximumBatches = ParseInteger(
+                configuration["Idempotency:MaximumBatchesPerRun"],
+                10);
+            if (intervalMinutes is < 1 or > 1_440 ||
+                batchSize is < 1 or > 10_000 ||
+                maximumBatches is < 1 or > 100)
+            {
+                throw new InvalidOperationException(
+                    "Idempotency purge configuration is outside safe bounds.");
+            }
+
+            services.AddSingleton(new IdempotencyPurgeSettings(
+                TimeSpan.FromMinutes(intervalMinutes),
+                batchSize,
+                maximumBatches));
+            services.AddHostedService<IdempotencyPurgeWorker>();
+        }
         var fileRoot = configuration["Files:RootPath"]
             ?? Path.Combine(Path.GetTempPath(), "workops-attachments");
         services.AddSingleton<IFileStorage>(new LocalFileStorage(fileRoot));
@@ -96,6 +126,15 @@ public static class DependencyInjection
 
         return services;
     }
+
+    private static int ParseInteger(string? value, int defaultValue) =>
+        int.TryParse(
+            value,
+            System.Globalization.NumberStyles.None,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out var parsed)
+            ? parsed
+            : defaultValue;
 
     public static async Task ApplyWorkOpsMigrationsAsync(
         this IServiceProvider services,

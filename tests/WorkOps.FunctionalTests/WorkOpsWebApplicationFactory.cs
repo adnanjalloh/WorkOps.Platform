@@ -32,14 +32,19 @@ internal sealed class WorkOpsWebApplicationFactory : WebApplicationFactory<Progr
     private readonly string _fileRoot = Path.Combine(
         Path.GetTempPath(),
         $"workops-functional-{Guid.NewGuid():N}");
+    private readonly IReadOnlyDictionary<string, string?> _configurationOverrides;
 
     public RecordingMessagePublisher Publisher { get; } = new();
 
     public RecordingLogSink Logs { get; } = new();
 
-    public WorkOpsWebApplicationFactory(string environment = "Testing")
+    public WorkOpsWebApplicationFactory(
+        string environment = "Testing",
+        IReadOnlyDictionary<string, string?>? configurationOverrides = null)
     {
         EnvironmentName = environment;
+        _configurationOverrides = configurationOverrides ??
+                                  new Dictionary<string, string?>(StringComparer.Ordinal);
     }
 
     public string EnvironmentName { get; }
@@ -70,7 +75,9 @@ internal sealed class WorkOpsWebApplicationFactory : WebApplicationFactory<Progr
                 ["Files:DevelopmentScannerEnabled"] =
                     (EnvironmentName != "Production").ToString(),
                 ["Files:RootPath"] = _fileRoot,
+                ["Idempotency:PurgeEnabled"] = "false",
             });
+            configuration.AddInMemoryCollection(_configurationOverrides);
         });
         builder.ConfigureServices(services =>
         {

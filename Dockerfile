@@ -1,5 +1,7 @@
 # syntax=docker/dockerfile:1.7
 FROM mcr.microsoft.com/dotnet/sdk:10.0.302-noble AS build
+ARG VCS_REF=local
+ARG VERSION=0.1.0-local
 WORKDIR /src
 
 COPY global.json Directory.Build.props Directory.Packages.props WorkOps.Platform.slnx ./
@@ -16,7 +18,7 @@ COPY src/WorkOps.Infrastructure/packages.lock.json src/WorkOps.Infrastructure/
 RUN dotnet restore src/WorkOps.Api/WorkOps.Api.csproj --locked-mode
 
 COPY . .
-RUN dotnet publish src/WorkOps.Api/WorkOps.Api.csproj --configuration Release --no-restore --output /app/publish /p:UseAppHost=false
+RUN dotnet publish src/WorkOps.Api/WorkOps.Api.csproj --configuration Release --no-restore --output /app/publish /p:UseAppHost=false /p:Version="$VERSION" /p:SourceRevisionId="$VCS_REF"
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0.10-noble-chiseled AS runtime
 ARG VCS_REF=local

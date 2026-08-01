@@ -28,8 +28,12 @@ tests
 *.key
 *.pfx
 *.p12
+*.jks
+.terraform
 *.tfstate
+*.tfstate.*
 *.tfplan
 terraform.tfvars
 terraform.tfvars.json
+crash.log
 **/secrets.json

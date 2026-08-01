@@ -6,6 +6,7 @@ using Serilog;
 using Serilog.Core;
 using Serilog.Events;
 using Serilog.Formatting.Json;
+using WorkOps.Application.Common;
 
 namespace WorkOps.Api.Observability;
 
@@ -36,7 +37,9 @@ internal static class ObservabilityExtensions
     {
         var otlpSection = configuration.GetSection("Observability:Otlp");
         var exportEnabled = otlpSection.GetValue("Enabled", false);
+        var allowInsecureTransport = otlpSection.GetValue("AllowInsecureTransport", false);
         var endpoint = otlpSection["Endpoint"];
+        var headers = otlpSection["Headers"];
         Uri? exportEndpoint = null;
         if (exportEnabled &&
             (!Uri.TryCreate(endpoint, UriKind.Absolute, out exportEndpoint) ||
@@ -46,11 +49,24 @@ internal static class ObservabilityExtensions
                 "Observability:Otlp:Endpoint must be an absolute HTTP or HTTPS URI.");
         }
 
+        if (exportEndpoint?.Scheme == Uri.UriSchemeHttp && !allowInsecureTransport)
+        {
+            throw new InvalidOperationException(
+                "HTTP OTLP export requires Observability:Otlp:AllowInsecureTransport=true.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(headers) &&
+            (!exportEnabled || exportEndpoint?.Scheme != Uri.UriSchemeHttps))
+        {
+            throw new InvalidOperationException(
+                "OTLP headers require enabled HTTPS export.");
+        }
+
         var telemetry = services
             .AddOpenTelemetry()
             .ConfigureResource(resource => resource.AddService(
                 serviceName: "WorkOps.Api",
-                serviceVersion: "0.1.0"));
+                serviceVersion: BuildVersion.Current));
 
         telemetry.WithTracing(tracing =>
         {
@@ -64,7 +80,11 @@ internal static class ObservabilityExtensions
                 .AddSource("WorkOps.Messaging");
             if (exportEndpoint is not null)
             {
-                tracing.AddOtlpExporter(options => options.Endpoint = exportEndpoint);
+                tracing.AddOtlpExporter(options =>
+                {
+                    options.Endpoint = exportEndpoint;
+                    options.Headers = headers;
+                });
             }
         });
         telemetry.WithMetrics(metrics =>
@@ -74,10 +94,14 @@ internal static class ObservabilityExtensions
                 .AddHttpClientInstrumentation()
                 .AddRuntimeInstrumentation()
                 .AddNpgsqlInstrumentation()
-                .AddMeter("WorkOps.Cache", "WorkOps.Messaging");
+                .AddMeter("WorkOps.Cache", "WorkOps.Idempotency", "WorkOps.Messaging");
             if (exportEndpoint is not null)
             {
-                metrics.AddOtlpExporter(options => options.Endpoint = exportEndpoint);
+                metrics.AddOtlpExporter(options =>
+                {
+                    options.Endpoint = exportEndpoint;
+                    options.Headers = headers;
+                });
             }
         });
 

@@ -44,6 +44,11 @@ builder.Services.AddWorkOpsObservability(builder.Configuration);
 var app = builder.Build();
 
 app.UseExceptionHandler();
+if (HttpHardeningExtensions.ForwardedHeadersEnabled(builder.Configuration))
+{
+    app.UseForwardedHeaders();
+}
+
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseSerilogRequestLogging(options =>

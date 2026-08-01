@@ -1,11 +1,12 @@
 using System.Diagnostics.Metrics;
+using WorkOps.Application.Common;
 using WorkOps.Application.Messaging;
 
 namespace WorkOps.Infrastructure.Messaging;
 
 internal static class MessagingMetrics
 {
-    private static readonly Meter Meter = new("WorkOps.Messaging", "1.0.0");
+    private static readonly Meter Meter = new("WorkOps.Messaging", BuildVersion.Current);
     private static readonly Counter<long> OutboxResults = Meter.CreateCounter<long>(
         "workops.outbox.results");
     private static readonly Counter<long> NotificationResults = Meter.CreateCounter<long>(
