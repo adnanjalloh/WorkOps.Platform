@@ -185,8 +185,8 @@
       },
       "RESPite": {
         "type": "Transitive",
-        "resolved": "3.0.17",
-        "contentHash": "68slEMyRTUNLc75DruEDsEohFmFfNwkHLLtwQ46bobF+8Tl+UXMKM1kM87ihhKy6JdAqy1RrvAfvBWeLmcY9Gg=="
+        "resolved": "3.1.0",
+        "contentHash": "Xf2mFsMahfIpcF2rAkCd0TLSOz0Zwmg2SuI5zv5Lagmx/BiZbjoAU8VQyGUgpx8C1V0qdfXznsUgDLx4OLPpkg=="
       },
       "Serilog": {
         "type": "Transitive",
@@ -275,7 +275,7 @@
           "Microsoft.EntityFrameworkCore.Relational": "[10.0.10, )",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.3, )",
           "RabbitMQ.Client": "[7.2.1, )",
-          "StackExchange.Redis": "[3.0.17, )",
+          "StackExchange.Redis": "[3.1.0, )",
           "WorkOps.Application": "[1.0.0, )",
           "WorkOps.Domain": "[1.0.0, )"
         }
@@ -324,11 +324,11 @@
       },
       "StackExchange.Redis": {
         "type": "CentralTransitive",
-        "requested": "[3.0.17, )",
-        "resolved": "3.0.17",
-        "contentHash": "ItAm9lokZ1mWsQLF3u4Yw4eb/gvkX6Rp9bLAe1KUKgKAjPkALoQwTc6jJLtBZoOv9LT7RwvSIXZZb9FF30QhOg==",
+        "requested": "[3.1.0, )",
+        "resolved": "3.1.0",
+        "contentHash": "brWRCTBSKJjQxbiJhKfvLPinEAyUScUsGOrf8EHiWcOLaFzeM0367Co5YEzHywLdueXOtZCr6zKhSRU/tiEXxQ==",
         "dependencies": {
-          "RESPite": "3.0.17",
+          "RESPite": "3.1.0",
           "System.IO.Hashing": "10.0.5"
         }
       },
