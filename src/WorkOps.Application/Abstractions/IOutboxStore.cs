@@ -28,4 +28,6 @@ public interface IOutboxStore
     Task<OutboxMessage?> FindCurrentAsync(
         Guid messageId,
         CancellationToken cancellationToken);
+
+    Task<long> CountBacklogAsync(CancellationToken cancellationToken);
 }

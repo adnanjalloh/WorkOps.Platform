@@ -3,6 +3,7 @@ using WorkOps.Application.Common;
 using WorkOps.Application.Common.Sanitization;
 using WorkOps.Application.Common.Validation;
 using WorkOps.Application.Files;
+using WorkOps.Application.Idempotency;
 using WorkOps.Application.Projects;
 using WorkOps.Application.Tenancy;
 using WorkOps.Application.WorkItems;
@@ -141,6 +142,24 @@ internal sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) :
                     cancellationToken);
                 return true;
 
+            case IdempotencyKeyConflictException:
+                await WriteProblemAsync(
+                    httpContext,
+                    StatusCodes.Status409Conflict,
+                    "Idempotency key was reused with different input",
+                    "idempotency_key_conflict",
+                    cancellationToken);
+                return true;
+
+            case IdempotencyRaceException:
+                await WriteProblemAsync(
+                    httpContext,
+                    StatusCodes.Status409Conflict,
+                    "An identical request is still being committed",
+                    "idempotency_request_in_progress",
+                    cancellationToken);
+                return true;
+
             case RequestValidationException validation:
                 await WriteProblemAsync(
                     httpContext,
@@ -162,15 +181,11 @@ internal sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) :
         string code,
         CancellationToken cancellationToken)
     {
-        httpContext.Response.StatusCode = statusCode;
-        return httpContext.Response.WriteAsJsonAsync(
-            new
-            {
-                type = "about:blank",
-                title,
-                status = statusCode,
-                code,
-            },
-            cancellationToken);
+        _ = cancellationToken;
+        return Results.Problem(
+                statusCode: statusCode,
+                title: title,
+                extensions: new Dictionary<string, object?> { ["code"] = code })
+            .ExecuteAsync(httpContext);
     }
 }

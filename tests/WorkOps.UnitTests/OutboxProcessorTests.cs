@@ -146,5 +146,8 @@ public sealed class OutboxProcessorTests
         public Task<OutboxMessage?> FindCurrentAsync(
             Guid messageId,
             CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<long> CountBacklogAsync(CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
     }
 }

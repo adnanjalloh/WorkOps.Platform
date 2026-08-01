@@ -1,4 +1,5 @@
 using WorkOps.Api.Tenancy;
+using WorkOps.Application.Common.Validation;
 using WorkOps.Application.Projects;
 using WorkOps.Contracts.Common;
 using WorkOps.Contracts.Projects;
@@ -33,13 +34,39 @@ internal static class ProjectEndpoints
     private static async Task<IResult> CreateAsync(
         CreateProjectRequest request,
         ProjectService projectService,
+        HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var project = await projectService.CreateAsync(
+        var hasIdempotencyKey = httpContext.Request.Headers.TryGetValue(
+            "Idempotency-Key",
+            out var idempotencyValues);
+        if (hasIdempotencyKey && idempotencyValues.Count != 1)
+        {
+            throw new RequestValidationException("invalid_idempotency_key");
+        }
+
+        if (!hasIdempotencyKey)
+        {
+            var project = await projectService.CreateAsync(
+                request.Name,
+                request.Key,
+                cancellationToken);
+            return Results.Created($"/api/v1/projects/{project.Id:D}", ToResponse(project));
+        }
+
+        var result = await projectService.CreateIdempotentAsync(
             request.Name,
             request.Key,
+            idempotencyValues[0]!,
             cancellationToken);
-        return Results.Created($"/api/v1/projects/{project.Id:D}", ToResponse(project));
+        if (result.Replayed)
+        {
+            httpContext.Response.Headers["Idempotency-Replayed"] = "true";
+        }
+
+        return Results.Created(
+            $"/api/v1/projects/{result.Project.Id:D}",
+            ToResponse(result.Project));
     }
 
     private static async Task<IResult> ListAsync(

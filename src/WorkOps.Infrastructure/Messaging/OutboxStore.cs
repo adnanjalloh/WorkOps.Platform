@@ -79,6 +79,14 @@ internal sealed class OutboxStore(WorkOpsDbContext dbContext) : IOutboxStore
             message => message.Id == messageId,
             cancellationToken);
 
+    public Task<long> CountBacklogAsync(CancellationToken cancellationToken) =>
+        dbContext.OutboxMessages
+            .IgnoreQueryFilters()
+            .LongCountAsync(
+                message => message.Status == OutboxMessageStatus.Pending ||
+                           message.Status == OutboxMessageStatus.Processing,
+                cancellationToken);
+
     private async Task<OutboxMessage> FindForProcessingAsync(
         Guid messageId,
         CancellationToken cancellationToken) =>

@@ -4,9 +4,14 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Json;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using WorkOps.Application.Audit;
 using WorkOps.Application.Messaging;
@@ -569,6 +574,173 @@ public sealed class TenantIdentityEndpointTests
         await AssertProblemCodeAsync(oversized, "invalid_attachment_size");
     }
 
+    [TestMethod]
+    public async Task Responses_include_safe_diagnostics_and_security_headers()
+    {
+        const string privateMarker = "private-marker-741963";
+        _factory.Logs.Clear();
+        using var client = CreateAuthorizedClient(
+            $"functional|diagnostics-{Guid.NewGuid():N}",
+            "Diagnostics User");
+
+        using var health = await client.GetAsync(new Uri("/health/live", UriKind.Relative));
+        Assert.AreEqual(HttpStatusCode.OK, health.StatusCode);
+        Assert.AreEqual("nosniff", health.Headers.GetValues("X-Content-Type-Options").Single());
+        Assert.AreEqual("DENY", health.Headers.GetValues("X-Frame-Options").Single());
+        Assert.AreEqual("no-referrer", health.Headers.GetValues("Referrer-Policy").Single());
+        Assert.IsFalse(health.Headers.Contains("Server"));
+        var correlationId = health.Headers.GetValues("X-Correlation-Id").Single();
+        Assert.AreEqual(32, correlationId.Length);
+
+        using var rejected = await client.PostAsJsonAsync(
+            new Uri("/api/v1/workspaces/", UriKind.Relative),
+            new CreateWorkspaceRequest($"<{privateMarker}>", "safe-diagnostics"));
+        var body = await rejected.Content.ReadAsStringAsync();
+        using var problem = JsonDocument.Parse(body);
+
+        Assert.AreEqual(HttpStatusCode.UnprocessableEntity, rejected.StatusCode);
+        Assert.AreEqual("input_rejected", problem.RootElement.GetProperty("code").GetString());
+        Assert.AreEqual(
+            rejected.Headers.GetValues("X-Correlation-Id").Single(),
+            problem.RootElement.GetProperty("correlationId").GetString());
+        Assert.AreEqual(32, problem.RootElement.GetProperty("traceId").GetString()?.Length);
+        Assert.DoesNotContain(privateMarker, body, StringComparison.Ordinal);
+        Assert.IsFalse(_factory.Logs.Messages.Any(message =>
+            message.Contains(privateMarker, StringComparison.Ordinal)));
+    }
+
+    [TestMethod]
+    public async Task Openapi_and_untrusted_cors_are_not_exposed_outside_development()
+    {
+        using var client = CreateClient();
+
+        using var openApi = await client.GetAsync(new Uri("/openapi/v1.json", UriKind.Relative));
+        Assert.AreEqual(HttpStatusCode.NotFound, openApi.StatusCode);
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Options,
+            new Uri("/api/v1/me/", UriKind.Relative));
+        request.Headers.Add("Origin", "https://untrusted.example.invalid");
+        request.Headers.Add("Access-Control-Request-Method", "GET");
+        using var preflight = await client.SendAsync(request);
+
+        Assert.IsFalse(preflight.Headers.Contains("Access-Control-Allow-Origin"));
+    }
+
+    [TestMethod]
+    public async Task Rate_limit_returns_safe_problem_details()
+    {
+        var subject = $"functional|rate-limit-{Guid.NewGuid():N}";
+        var options = _factory.Services
+            .GetRequiredService<IOptions<RateLimiterOptions>>()
+            .Value;
+        var limiter = options.GlobalLimiter;
+        Assert.IsNotNull(limiter);
+        var permitLimit = _factory.Services
+            .GetRequiredService<IConfiguration>()
+            .GetValue<int>("RateLimiting:PermitLimit");
+        var context = new DefaultHttpContext();
+        context.Request.Path = "/api/v1/me/";
+        context.User = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim("sub", subject)],
+            authenticationType: "test"));
+
+        for (var attempt = 0; attempt < permitLimit; attempt++)
+        {
+            using var lease = await limiter.AcquireAsync(context, 1, CancellationToken.None);
+            Assert.IsTrue(lease.IsAcquired);
+        }
+
+        using var client = CreateAuthorizedClient(subject, "Rate Limited User");
+        using var response = await client.GetAsync(new Uri("/api/v1/me/", UriKind.Relative));
+
+        Assert.AreEqual(HttpStatusCode.TooManyRequests, response.StatusCode);
+        Assert.AreEqual("60", response.Headers.RetryAfter?.Delta?.TotalSeconds.ToString(
+            System.Globalization.CultureInfo.InvariantCulture) ??
+            response.Headers.GetValues("Retry-After").Single());
+        await AssertProblemCodeAsync(response, "rate_limit_exceeded");
+    }
+
+    [TestMethod]
+    public async Task Project_creation_replays_only_the_same_scoped_idempotent_request()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var idempotencyKey = $"project-{suffix}";
+        using var ownerClient = CreateAuthorizedClient(
+            $"functional|idempotency-owner-{suffix}",
+            "Idempotency Owner");
+        using var otherClient = CreateAuthorizedClient(
+            $"functional|idempotency-other-{suffix}",
+            "Other Owner");
+        var workspace = await CreateWorkspaceAsync(ownerClient, "Idempotent Workspace");
+        var otherWorkspace = await CreateWorkspaceAsync(otherClient, "Other Idempotent Workspace");
+        var body = new CreateProjectRequest("Retry Safe Project", $"retry-{suffix}");
+
+        using var first = await SendIdempotentProjectAsync(
+            ownerClient,
+            workspace.Id,
+            idempotencyKey,
+            body);
+        using var second = await SendIdempotentProjectAsync(
+            ownerClient,
+            workspace.Id,
+            idempotencyKey,
+            body);
+        var firstProject = await first.Content.ReadFromJsonAsync<ProjectResponse>();
+        var secondProject = await second.Content.ReadFromJsonAsync<ProjectResponse>();
+
+        Assert.AreEqual(HttpStatusCode.Created, first.StatusCode);
+        Assert.AreEqual(HttpStatusCode.Created, second.StatusCode);
+        Assert.IsNotNull(firstProject);
+        Assert.IsNotNull(secondProject);
+        Assert.AreEqual(firstProject, secondProject);
+        Assert.IsFalse(first.Headers.Contains("Idempotency-Replayed"));
+        Assert.AreEqual("true", second.Headers.GetValues("Idempotency-Replayed").Single());
+
+        using var changedBody = await SendIdempotentProjectAsync(
+            ownerClient,
+            workspace.Id,
+            idempotencyKey,
+            new CreateProjectRequest("Changed Request", $"changed-{suffix}"));
+        Assert.AreEqual(HttpStatusCode.Conflict, changedBody.StatusCode);
+        await AssertProblemCodeAsync(changedBody, "idempotency_key_conflict");
+
+        using var otherScope = await SendIdempotentProjectAsync(
+            otherClient,
+            otherWorkspace.Id,
+            idempotencyKey,
+            new CreateProjectRequest("Independent Project", $"independent-{suffix}"));
+        Assert.AreEqual(HttpStatusCode.Created, otherScope.StatusCode);
+
+        var features = await GetFeaturesAsync(ownerClient, workspace.Id);
+        Assert.AreEqual(1, features.ActiveProjectCount);
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<WorkOpsDbContext>();
+        Assert.AreEqual(
+            2,
+            await dbContext.IdempotencyRecords.IgnoreQueryFilters().CountAsync(record =>
+                record.Key == idempotencyKey));
+    }
+
+    [TestMethod]
+    public async Task Production_hides_openapi_and_emits_hsts()
+    {
+        await using var productionFactory = new WorkOpsWebApplicationFactory("Production");
+        await productionFactory.InitializeAsync();
+        using var client = productionFactory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            BaseAddress = new Uri("https://workops.test"),
+        });
+
+        using var health = await client.GetAsync(new Uri("/health/live", UriKind.Relative));
+        using var openApi = await client.GetAsync(new Uri("/openapi/v1.json", UriKind.Relative));
+
+        Assert.AreEqual(HttpStatusCode.OK, health.StatusCode);
+        Assert.IsTrue(health.Headers.Contains("Strict-Transport-Security"));
+        Assert.AreEqual(HttpStatusCode.NotFound, openApi.StatusCode);
+    }
+
     private static HttpClient CreateClient() => _factory.CreateClient(
         new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
@@ -696,6 +868,23 @@ public sealed class TenantIdentityEndpointTests
         Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
         Assert.IsNotNull(features);
         return features;
+    }
+
+    private static async Task<HttpResponseMessage> SendIdempotentProjectAsync(
+        HttpClient client,
+        Guid workspaceId,
+        string idempotencyKey,
+        CreateProjectRequest body)
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            new Uri("/api/v1/projects/", UriKind.Relative))
+        {
+            Content = JsonContent.Create(body),
+        };
+        request.Headers.Add("X-Workspace-Id", workspaceId.ToString("D"));
+        request.Headers.Add("Idempotency-Key", idempotencyKey);
+        return await client.SendAsync(request);
     }
 
     private static async Task<HttpResponseMessage> SendWorkspaceFileAsync(

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -9,6 +10,7 @@ internal sealed class OutboxWorker(
     IServiceScopeFactory scopeFactory,
     ILogger<OutboxWorker> logger) : BackgroundService
 {
+    private static readonly ActivitySource ActivitySource = new("WorkOps.Messaging", "1.0.0");
     private static readonly Action<ILogger, string, Exception?> LogResult =
         LoggerMessage.Define<string>(
             LogLevel.Information,
@@ -28,8 +30,12 @@ internal sealed class OutboxWorker(
             {
                 await using var scope = scopeFactory.CreateAsyncScope();
                 var processor = scope.ServiceProvider.GetRequiredService<OutboxProcessor>();
+                var startedAt = Stopwatch.GetTimestamp();
+                using var activity = ActivitySource.StartActivity("outbox.process");
                 var result = await processor.ProcessNextAsync(stoppingToken);
-                MessagingMetrics.RecordOutbox(result);
+                var duration = Stopwatch.GetElapsedTime(startedAt);
+                MessagingMetrics.RecordOutbox(result, duration);
+                activity?.SetTag("workops.result", result.ToString());
                 if (result != OutboxProcessResult.NoMessage)
                 {
                     LogResult(logger, result.ToString(), null);

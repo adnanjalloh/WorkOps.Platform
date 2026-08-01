@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
@@ -9,6 +10,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
+using Serilog.Core;
+using Serilog.Events;
 using Testcontainers.PostgreSql;
 using WorkOps.Application.Abstractions;
 using WorkOps.Infrastructure;
@@ -32,6 +35,15 @@ internal sealed class WorkOpsWebApplicationFactory : WebApplicationFactory<Progr
 
     public RecordingMessagePublisher Publisher { get; } = new();
 
+    public RecordingLogSink Logs { get; } = new();
+
+    public WorkOpsWebApplicationFactory(string environment = "Testing")
+    {
+        EnvironmentName = environment;
+    }
+
+    public string EnvironmentName { get; }
+
     public async Task InitializeAsync()
     {
         await _database.StartAsync();
@@ -41,19 +53,22 @@ internal sealed class WorkOpsWebApplicationFactory : WebApplicationFactory<Progr
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.UseEnvironment("Testing");
+        builder.UseEnvironment(EnvironmentName);
         builder.ConfigureAppConfiguration((_, configuration) =>
         {
             configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
+                ["AllowedHosts"] = "localhost;workops.test",
                 ["Authentication:Audience"] = Audience,
                 ["Authentication:Issuer"] = Issuer,
-                ["Authentication:RequireHttpsMetadata"] = "false",
+                ["Authentication:RequireHttpsMetadata"] =
+                    (EnvironmentName == "Production").ToString(),
                 ["Authentication:AllowedAlgorithms:0"] = SecurityAlgorithms.HmacSha256,
                 ["ConnectionStrings:WorkOps"] = _database.GetConnectionString(),
                 ["Operations:ApplyMigrations"] = "false",
                 ["Cache:Enabled"] = "false",
-                ["Files:DevelopmentScannerEnabled"] = "true",
+                ["Files:DevelopmentScannerEnabled"] =
+                    (EnvironmentName != "Production").ToString(),
                 ["Files:RootPath"] = _fileRoot,
             });
         });
@@ -66,6 +81,7 @@ internal sealed class WorkOpsWebApplicationFactory : WebApplicationFactory<Progr
             services.RemoveAll<IMessagePublisher>();
             services.AddSingleton(Publisher);
             services.AddSingleton<IMessagePublisher>(Publisher);
+            services.AddSingleton<ILogEventSink>(Logs);
             services.RemoveAll<IFileScanner>();
             services.AddSingleton<IFileScanner, FunctionalFileScanner>();
             services.RemoveAll<IFileStorage>();
@@ -97,6 +113,26 @@ internal sealed class WorkOpsWebApplicationFactory : WebApplicationFactory<Progr
         {
             Directory.Delete(_fileRoot, recursive: true);
         }
+    }
+}
+
+internal sealed class RecordingLogSink : ILogEventSink
+{
+    private readonly ConcurrentQueue<string> _messages = new();
+
+    public IReadOnlyCollection<string> Messages => _messages.ToArray();
+
+    public void Clear()
+    {
+        while (_messages.TryDequeue(out _))
+        {
+        }
+    }
+
+    public void Emit(LogEvent logEvent)
+    {
+        _messages.Enqueue(
+            $"{logEvent.RenderMessage(System.Globalization.CultureInfo.InvariantCulture)}|{logEvent.Exception}");
     }
 }
 

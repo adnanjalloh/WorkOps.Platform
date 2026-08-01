@@ -4,6 +4,7 @@ using WorkOps.Domain.Audit;
 using WorkOps.Domain.Common;
 using WorkOps.Domain.Features;
 using WorkOps.Domain.Files;
+using WorkOps.Domain.Idempotency;
 using WorkOps.Domain.Messaging;
 using WorkOps.Domain.Notifications;
 using WorkOps.Domain.Projects;
@@ -65,6 +66,7 @@ public sealed class DependencyRuleTests
             typeof(NotificationDelivery),
             typeof(WorkspaceSubscription),
             typeof(Attachment),
+            typeof(IdempotencyRecord),
         };
 
         Assert.IsTrue(tenantOwnedTypes.All(typeof(IWorkspaceOwned).IsAssignableFrom));

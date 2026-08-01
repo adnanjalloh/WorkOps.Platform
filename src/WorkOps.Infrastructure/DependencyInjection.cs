@@ -8,6 +8,7 @@ using WorkOps.Infrastructure.Audit;
 using WorkOps.Infrastructure.Features;
 using WorkOps.Infrastructure.Files;
 using WorkOps.Infrastructure.Health;
+using WorkOps.Infrastructure.Idempotency;
 using WorkOps.Infrastructure.Identity;
 using WorkOps.Infrastructure.Messaging;
 using WorkOps.Infrastructure.Notifications;
@@ -42,6 +43,7 @@ public static class DependencyInjection
         services.AddScoped<INotificationStore, NotificationStore>();
         services.AddScoped<IWorkspaceSubscriptionStore, WorkspaceSubscriptionStore>();
         services.AddScoped<IAttachmentStore, AttachmentStore>();
+        services.AddScoped<IIdempotencyStore, IdempotencyStore>();
         var fileRoot = configuration["Files:RootPath"]
             ?? Path.Combine(Path.GetTempPath(), "workops-attachments");
         services.AddSingleton<IFileStorage>(new LocalFileStorage(fileRoot));
@@ -66,6 +68,7 @@ public static class DependencyInjection
             services.RemoveAll<IMessagePublisher>();
             services.AddSingleton<IMessagePublisher, RabbitMqMessagePublisher>();
             services.AddHostedService<OutboxWorker>();
+            services.AddHostedService<OutboxBacklogMonitor>();
             services.AddHostedService<RabbitMqNotificationConsumer>();
             services.AddHealthChecks().AddCheck<RabbitMqHealthCheck>(
                 "rabbitmq",

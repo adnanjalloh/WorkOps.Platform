@@ -1,10 +1,16 @@
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using WorkOps.Application.Abstractions;
 using WorkOps.Application.Audit;
 using WorkOps.Application.Common.Pagination;
 using WorkOps.Application.Common.Sanitization;
 using WorkOps.Application.Common.Validation;
 using WorkOps.Application.Features;
+using WorkOps.Application.Idempotency;
 using WorkOps.Application.Tenancy;
+using WorkOps.Domain.Idempotency;
 using WorkOps.Domain.Projects;
 
 namespace WorkOps.Application.Projects;
@@ -14,19 +20,107 @@ public sealed class ProjectService(
     IUnitOfWork unitOfWork,
     AuditWriter auditWriter,
     FeatureService features,
+    IIdempotencyStore idempotency,
     IWorkspaceContextAccessor workspaceContext,
     IInputSanitizer sanitizer,
     TimeProvider timeProvider)
 {
+    private const string ProjectCreateMethod = "POST";
+    private const string ProjectCreateRoute = "/api/v1/projects";
+    private static readonly JsonSerializerOptions IdempotencyJson = CreateIdempotencyJson();
+
     public async Task<ProjectView> CreateAsync(
         string name,
         string key,
+        CancellationToken cancellationToken)
+    {
+        var safeName = sanitizer.Apply(name, InputProfile.PlainText, "body.name");
+        var safeKey = sanitizer.Apply(key, InputProfile.KeyPath, "body.key");
+        var project = await CreateCoreAsync(safeName, safeKey, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        await features.InvalidateAsync(cancellationToken);
+
+        return await projects.GetAsync(project.Id, cancellationToken)
+            ?? throw new InvalidOperationException("Created project could not be read.");
+    }
+
+    public async Task<ProjectCreationResult> CreateIdempotentAsync(
+        string name,
+        string key,
+        string idempotencyKey,
         CancellationToken cancellationToken)
     {
         var current = workspaceContext.Current
             ?? throw new InvalidOperationException("Workspace context is required.");
         var safeName = sanitizer.Apply(name, InputProfile.PlainText, "body.name");
         var safeKey = sanitizer.Apply(key, InputProfile.KeyPath, "body.key");
+        var safeIdempotencyKey = sanitizer.Apply(
+            idempotencyKey,
+            InputProfile.Identifier,
+            "header.Idempotency-Key");
+        var requestHash = HashProjectRequest(safeName, safeKey);
+        var now = timeProvider.GetUtcNow();
+        var existing = await idempotency.FindCurrentAsync(
+            current.UserId,
+            ProjectCreateMethod,
+            ProjectCreateRoute,
+            safeIdempotencyKey,
+            cancellationToken);
+        if (existing is not null && existing.ExpiresAt > now)
+        {
+            if (!CryptographicOperations.FixedTimeEquals(
+                    Convert.FromHexString(existing.RequestHash),
+                    Convert.FromHexString(requestHash)))
+            {
+                throw new IdempotencyKeyConflictException();
+            }
+
+            return new ProjectCreationResult(
+                JsonSerializer.Deserialize<ProjectView>(existing.ResponseBodyJson, IdempotencyJson)
+                ?? throw new InvalidOperationException("The idempotent response is invalid."),
+                Replayed: true);
+        }
+
+        var project = await CreateCoreAsync(safeName, safeKey, cancellationToken);
+        var response = new ProjectView(
+            project.Id,
+            project.Name,
+            project.Key,
+            project.Status,
+            WorkItemCount: 0,
+            project.CreatedAt,
+            project.UpdatedAt);
+        var responseJson = JsonSerializer.Serialize(response, IdempotencyJson);
+        if (existing is null)
+        {
+            idempotency.Add(IdempotencyRecord.Create(
+                current.WorkspaceId,
+                current.UserId,
+                ProjectCreateMethod,
+                ProjectCreateRoute,
+                safeIdempotencyKey,
+                requestHash,
+                201,
+                responseJson,
+                now,
+                now.AddHours(24)));
+        }
+        else
+        {
+            existing.Replace(requestHash, 201, responseJson, now, now.AddHours(24));
+        }
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        await features.InvalidateAsync(cancellationToken);
+        return new ProjectCreationResult(response, Replayed: false);
+    }
+
+    private async Task<Project> CreateCoreAsync(
+        string safeName,
+        string safeKey,
+        CancellationToken cancellationToken)
+    {
+        var current = workspaceContext.Current
+            ?? throw new InvalidOperationException("Workspace context is required.");
 
         if (await projects.KeyExistsAsync(safeKey, cancellationToken))
         {
@@ -50,11 +144,7 @@ public sealed class ProjectService(
             {
                 ["status"] = project.Status.ToString(),
             });
-        await unitOfWork.SaveChangesAsync(cancellationToken);
-        await features.InvalidateAsync(cancellationToken);
-
-        return await projects.GetAsync(project.Id, cancellationToken)
-            ?? throw new InvalidOperationException("Created project could not be read.");
+        return project;
     }
 
     public Task<ProjectView?> GetAsync(Guid projectId, CancellationToken cancellationToken) =>
@@ -118,5 +208,18 @@ public sealed class ProjectService(
         }
 
         return true;
+    }
+
+    private static string HashProjectRequest(string name, string key)
+    {
+        var canonical = $"{name.Length}:{name}|{key.Length}:{key}";
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical)));
+    }
+
+    private static JsonSerializerOptions CreateIdempotencyJson()
+    {
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        options.Converters.Add(new JsonStringEnumConverter());
+        return options;
     }
 }

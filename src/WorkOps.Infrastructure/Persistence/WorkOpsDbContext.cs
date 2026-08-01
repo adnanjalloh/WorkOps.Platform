@@ -1,10 +1,13 @@
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using WorkOps.Application.Abstractions;
 using WorkOps.Application.Common;
+using WorkOps.Application.Idempotency;
 using WorkOps.Application.Tenancy;
 using WorkOps.Domain.Audit;
 using WorkOps.Domain.Features;
 using WorkOps.Domain.Files;
+using WorkOps.Domain.Idempotency;
 using WorkOps.Domain.Identity;
 using WorkOps.Domain.Messaging;
 using WorkOps.Domain.Notifications;
@@ -39,6 +42,8 @@ public sealed class WorkOpsDbContext(
     public DbSet<WorkspaceSubscription> WorkspaceSubscriptions => Set<WorkspaceSubscription>();
 
     public DbSet<Attachment> Attachments => Set<Attachment>();
+
+    public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -83,6 +88,10 @@ public sealed class WorkOpsDbContext(
         modelBuilder.Entity<Attachment>().HasQueryFilter(
             attachment => workspaceContext.CurrentWorkspaceId.HasValue &&
                           attachment.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault());
+
+        modelBuilder.Entity<IdempotencyRecord>().HasQueryFilter(
+            record => workspaceContext.CurrentWorkspaceId.HasValue &&
+                      record.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault());
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
@@ -94,6 +103,15 @@ public sealed class WorkOpsDbContext(
         catch (DbUpdateConcurrencyException)
         {
             throw new ConcurrencyConflictException();
+        }
+        catch (DbUpdateException exception) when (
+            exception.InnerException is PostgresException
+            {
+                SqlState: PostgresErrorCodes.UniqueViolation,
+                ConstraintName: "PK_idempotency_records",
+            })
+        {
+            throw new IdempotencyRaceException();
         }
     }
 }
