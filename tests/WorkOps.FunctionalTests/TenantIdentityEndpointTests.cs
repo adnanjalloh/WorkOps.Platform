@@ -3,12 +3,16 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using WorkOps.Contracts.Common;
 using WorkOps.Contracts.Identity;
+using WorkOps.Contracts.Projects;
 using WorkOps.Contracts.Tenancy;
+using WorkOps.Contracts.WorkItems;
 using WorkOps.Domain.Tenancy;
 using WorkOps.Infrastructure.Persistence;
 
@@ -17,6 +21,7 @@ namespace WorkOps.FunctionalTests;
 [TestClass]
 public sealed class TenantIdentityEndpointTests
 {
+    private static readonly string[] ExpectedFlowLabels = ["backend", "tenant-safe"];
     private static WorkOpsWebApplicationFactory _factory = null!;
 
     [ClassInitialize]
@@ -134,6 +139,165 @@ public sealed class TenantIdentityEndpointTests
         Assert.AreEqual(HttpStatusCode.UnprocessableEntity, response.StatusCode);
     }
 
+    [TestMethod]
+    public async Task Golden_work_item_flow_rejects_invalid_stale_and_cross_workspace_changes()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var contributorSubject = $"functional|contributor-{suffix}";
+        using var ownerClient = CreateAuthorizedClient($"functional|flow-owner-{suffix}", "Flow Owner");
+        using var contributorClient = CreateAuthorizedClient(contributorSubject, "Flow Contributor");
+        using var outsiderClient = CreateAuthorizedClient($"functional|outsider-{suffix}", "Outsider");
+        var workspace = await CreateWorkspaceAsync(ownerClient, "Flow Workspace");
+        var outsiderWorkspace = await CreateWorkspaceAsync(outsiderClient, "Outsider Workspace");
+        var outsider = await GetMeAsync(outsiderClient);
+        var contributor = await InviteMemberAsync(
+            ownerClient,
+            workspace.Id,
+            contributorSubject,
+            "Flow Contributor",
+            WorkspaceRole.ProjectContributor);
+        var project = await CreateProjectAsync(
+            ownerClient,
+            workspace.Id,
+            "Delivery Platform",
+            $"delivery-{suffix}");
+        var created = await CreateWorkItemAsync(
+            contributorClient,
+            workspace.Id,
+            project.Id,
+            contributor.UserId,
+            "Deliver tenant workflow");
+
+        Assert.AreEqual("Backlog", created.Status);
+        Assert.AreEqual("High", created.Priority);
+        Assert.AreEqual(contributor.UserId, created.AssigneeUserId);
+        CollectionAssert.AreEqual(ExpectedFlowLabels, created.Labels.ToArray());
+
+        using var invalidAssignment = await SendWorkspaceJsonAsync(
+            contributorClient,
+            HttpMethod.Patch,
+            $"/api/v1/work-items/{created.Id:D}",
+            workspace.Id,
+            new UpdateWorkItemRequest(
+                created.Title,
+                created.Priority,
+                outsider.UserId,
+                created.Labels,
+                created.Version));
+        Assert.AreEqual(HttpStatusCode.UnprocessableEntity, invalidAssignment.StatusCode);
+        await AssertProblemCodeAsync(invalidAssignment, "invalid_assignee");
+
+        using var update = await SendWorkspaceJsonAsync(
+            contributorClient,
+            HttpMethod.Patch,
+            $"/api/v1/work-items/{created.Id:D}",
+            workspace.Id,
+            new UpdateWorkItemRequest(
+                "Deliver secure tenant workflow",
+                "Critical",
+                contributor.UserId,
+                ["api", "security"],
+                created.Version));
+        var updated = await update.Content.ReadFromJsonAsync<WorkItemResponse>();
+        Assert.AreEqual(HttpStatusCode.OK, update.StatusCode);
+        Assert.IsNotNull(updated);
+        Assert.AreEqual("Critical", updated.Priority);
+        Assert.AreNotEqual(created.Version, updated.Version);
+
+        using var invalidTransition = await SendWorkspaceJsonAsync(
+            contributorClient,
+            HttpMethod.Post,
+            $"/api/v1/work-items/{created.Id:D}/transitions",
+            workspace.Id,
+            new TransitionWorkItemRequest("Completed", updated.Version));
+        Assert.AreEqual(HttpStatusCode.UnprocessableEntity, invalidTransition.StatusCode);
+
+        using var validTransition = await SendWorkspaceJsonAsync(
+            contributorClient,
+            HttpMethod.Post,
+            $"/api/v1/work-items/{created.Id:D}/transitions",
+            workspace.Id,
+            new TransitionWorkItemRequest("InProgress", updated.Version));
+        var transitioned = await validTransition.Content.ReadFromJsonAsync<WorkItemResponse>();
+        Assert.AreEqual(HttpStatusCode.OK, validTransition.StatusCode);
+        Assert.IsNotNull(transitioned);
+        Assert.AreEqual("InProgress", transitioned.Status);
+        Assert.AreNotEqual(updated.Version, transitioned.Version);
+
+        using var staleTransition = await SendWorkspaceJsonAsync(
+            contributorClient,
+            HttpMethod.Post,
+            $"/api/v1/work-items/{created.Id:D}/transitions",
+            workspace.Id,
+            new TransitionWorkItemRequest("Blocked", updated.Version));
+        Assert.AreEqual(HttpStatusCode.Conflict, staleTransition.StatusCode);
+        await AssertProblemCodeAsync(staleTransition, "concurrency_conflict");
+
+        using var outsiderRead = await SendWorkspaceAsync(
+            outsiderClient,
+            HttpMethod.Get,
+            $"/api/v1/work-items/{created.Id:D}",
+            outsiderWorkspace.Id);
+        Assert.AreEqual(HttpStatusCode.NotFound, outsiderRead.StatusCode);
+
+        using var projectList = await SendWorkspaceAsync(
+            ownerClient,
+            HttpMethod.Get,
+            "/api/v1/projects/?page=1&pageSize=1&search=Delivery&status=Active",
+            workspace.Id);
+        var page = await projectList.Content.ReadFromJsonAsync<PagedResponse<ProjectResponse>>();
+        Assert.AreEqual(HttpStatusCode.OK, projectList.StatusCode);
+        Assert.IsNotNull(page);
+        Assert.AreEqual(1, page.TotalCount);
+        Assert.HasCount(1, page.Items);
+        Assert.AreEqual(1, page.Items[0].WorkItemCount);
+    }
+
+    [TestMethod]
+    public async Task Viewer_cannot_write_and_archived_project_rejects_new_work_items()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var viewerSubject = $"functional|viewer-{suffix}";
+        using var ownerClient = CreateAuthorizedClient($"functional|archive-owner-{suffix}", "Archive Owner");
+        using var viewerClient = CreateAuthorizedClient(viewerSubject, "Project Viewer");
+        var workspace = await CreateWorkspaceAsync(ownerClient, "Archive Workspace");
+        await InviteMemberAsync(
+            ownerClient,
+            workspace.Id,
+            viewerSubject,
+            "Project Viewer",
+            WorkspaceRole.Viewer);
+        var project = await CreateProjectAsync(
+            ownerClient,
+            workspace.Id,
+            "Archive Project",
+            $"archive-{suffix}");
+
+        using var viewerWrite = await SendWorkspaceJsonAsync(
+            viewerClient,
+            HttpMethod.Post,
+            "/api/v1/projects/",
+            workspace.Id,
+            new CreateProjectRequest("Forbidden Project", $"forbidden-{suffix}"));
+        Assert.AreEqual(HttpStatusCode.Forbidden, viewerWrite.StatusCode);
+
+        using var archive = await SendWorkspaceAsync(
+            ownerClient,
+            HttpMethod.Post,
+            $"/api/v1/projects/{project.Id:D}/archive",
+            workspace.Id);
+        Assert.AreEqual(HttpStatusCode.NoContent, archive.StatusCode);
+
+        using var createAfterArchive = await SendWorkspaceJsonAsync(
+            ownerClient,
+            HttpMethod.Post,
+            $"/api/v1/projects/{project.Id:D}/work-items",
+            workspace.Id,
+            new CreateWorkItemRequest("Should fail", "Normal", null, []));
+        Assert.AreEqual(HttpStatusCode.Conflict, createAfterArchive.StatusCode);
+        await AssertProblemCodeAsync(createAfterArchive, "project_archived");
+    }
+
     private static HttpClient CreateClient() => _factory.CreateClient(
         new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
@@ -175,5 +339,107 @@ public sealed class TenantIdentityEndpointTests
         Assert.AreEqual(HttpStatusCode.Created, response.StatusCode);
         Assert.IsNotNull(workspace);
         return workspace;
+    }
+
+    private static async Task<WorkspaceMemberResponse> InviteMemberAsync(
+        HttpClient client,
+        Guid workspaceId,
+        string subject,
+        string displayName,
+        WorkspaceRole role)
+    {
+        using var response = await client.PostAsJsonAsync(
+            new Uri($"/api/v1/workspaces/{workspaceId:D}/invitations", UriKind.Relative),
+            new InviteWorkspaceMemberRequest(subject, displayName, role.ToString()));
+        var member = await response.Content.ReadFromJsonAsync<WorkspaceMemberResponse>();
+
+        Assert.AreEqual(HttpStatusCode.Created, response.StatusCode);
+        Assert.IsNotNull(member);
+        return member;
+    }
+
+    private static async Task<MeResponse> GetMeAsync(HttpClient client)
+    {
+        using var response = await client.GetAsync(new Uri("/api/v1/me/", UriKind.Relative));
+
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        var me = await response.Content.ReadFromJsonAsync<MeResponse>();
+        Assert.IsNotNull(me);
+        return me;
+    }
+
+    private static async Task<ProjectResponse> CreateProjectAsync(
+        HttpClient client,
+        Guid workspaceId,
+        string name,
+        string key)
+    {
+        using var response = await SendWorkspaceJsonAsync(
+            client,
+            HttpMethod.Post,
+            "/api/v1/projects/",
+            workspaceId,
+            new CreateProjectRequest(name, key));
+
+        Assert.AreEqual(HttpStatusCode.Created, response.StatusCode);
+        var project = await response.Content.ReadFromJsonAsync<ProjectResponse>();
+        Assert.IsNotNull(project);
+        return project;
+    }
+
+    private static async Task<WorkItemResponse> CreateWorkItemAsync(
+        HttpClient client,
+        Guid workspaceId,
+        Guid projectId,
+        Guid assigneeUserId,
+        string title)
+    {
+        using var response = await SendWorkspaceJsonAsync(
+            client,
+            HttpMethod.Post,
+            $"/api/v1/projects/{projectId:D}/work-items",
+            workspaceId,
+            new CreateWorkItemRequest(
+                title,
+                "High",
+                assigneeUserId,
+                ["tenant-safe", "backend"]));
+        var workItem = await response.Content.ReadFromJsonAsync<WorkItemResponse>();
+
+        Assert.AreEqual(HttpStatusCode.Created, response.StatusCode);
+        Assert.IsNotNull(workItem);
+        return workItem;
+    }
+
+    private static Task<HttpResponseMessage> SendWorkspaceAsync(
+        HttpClient client,
+        HttpMethod method,
+        string path,
+        Guid workspaceId)
+    {
+        var request = new HttpRequestMessage(method, new Uri(path, UriKind.Relative));
+        request.Headers.Add("X-Workspace-Id", workspaceId.ToString("D"));
+        return client.SendAsync(request);
+    }
+
+    private static Task<HttpResponseMessage> SendWorkspaceJsonAsync<T>(
+        HttpClient client,
+        HttpMethod method,
+        string path,
+        Guid workspaceId,
+        T body)
+    {
+        var request = new HttpRequestMessage(method, new Uri(path, UriKind.Relative))
+        {
+            Content = JsonContent.Create(body),
+        };
+        request.Headers.Add("X-Workspace-Id", workspaceId.ToString("D"));
+        return client.SendAsync(request);
+    }
+
+    private static async Task AssertProblemCodeAsync(HttpResponseMessage response, string expectedCode)
+    {
+        using var problem = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        Assert.AreEqual(expectedCode, problem.RootElement.GetProperty("code").GetString());
     }
 }

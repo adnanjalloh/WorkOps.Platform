@@ -13,6 +13,7 @@ public sealed class InputSanitizer : IInputSanitizer
         var accepted = profile switch
         {
             InputProfile.PlainText => IsPlainText(normalized),
+            InputProfile.SearchText => IsSearchText(normalized),
             InputProfile.Identifier => IsIdentifier(normalized),
             InputProfile.KeyPath => IsKeyPath(normalized),
             InputProfile.HeaderValue => IsHeaderValue(normalized),
@@ -35,6 +36,11 @@ public sealed class InputSanitizer : IInputSanitizer
         value.Length is > 0 and <= 120 &&
         value.All(static character =>
             !char.IsControl(character) && character is not '<' and not '>');
+
+    private static bool IsSearchText(string value) =>
+        value.Length is > 0 and <= 120 &&
+        value.All(static character =>
+            !char.IsControl(character) && character is not '<' and not '>' and not '%' and not '_');
 
     private static bool IsIdentifier(string value) =>
         value.Length is > 0 and <= 200 &&

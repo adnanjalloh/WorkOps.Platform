@@ -5,7 +5,9 @@ using WorkOps.Application.Abstractions;
 using WorkOps.Infrastructure.Health;
 using WorkOps.Infrastructure.Identity;
 using WorkOps.Infrastructure.Persistence;
+using WorkOps.Infrastructure.Projects;
 using WorkOps.Infrastructure.Tenancy;
+using WorkOps.Infrastructure.WorkItems;
 
 namespace WorkOps.Infrastructure;
 
@@ -26,6 +28,8 @@ public static class DependencyInjection
         services.AddScoped<IUserStore, UserStore>();
         services.AddScoped<IWorkspaceStore, WorkspaceStore>();
         services.AddScoped<IWorkspaceAccessReader, WorkspaceAccessReader>();
+        services.AddScoped<IProjectStore, ProjectStore>();
+        services.AddScoped<IWorkItemStore, WorkItemStore>();
         services.AddHealthChecks().AddCheck<DatabaseHealthCheck>(
             "postgresql",
             tags: ["ready"]);

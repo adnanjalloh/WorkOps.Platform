@@ -34,6 +34,8 @@ app.MapHealthChecks(
     new HealthCheckOptions { Predicate = static check => check.Tags.Contains("ready") });
 app.MapIdentityEndpoints();
 app.MapWorkspaceEndpoints();
+app.MapProjectEndpoints();
+app.MapWorkItemEndpoints();
 
 if (builder.Configuration.GetValue("Operations:ApplyMigrations", false))
 {

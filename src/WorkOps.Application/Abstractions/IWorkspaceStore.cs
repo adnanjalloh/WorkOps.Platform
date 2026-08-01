@@ -11,6 +11,12 @@ public interface IWorkspaceStore
 
     void Add(WorkspaceMembership membership);
 
+    Task<WorkspaceMembership?> FindCurrentMembershipAsync(
+        Guid userId,
+        CancellationToken cancellationToken);
+
+    Task<bool> IsCurrentMemberActiveAsync(Guid userId, CancellationToken cancellationToken);
+
     Task<Workspace?> GetCurrentAsync(CancellationToken cancellationToken);
 
     Task<IReadOnlyList<WorkspaceMemberView>> ListCurrentMembersAsync(CancellationToken cancellationToken);

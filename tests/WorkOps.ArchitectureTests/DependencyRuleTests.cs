@@ -1,7 +1,10 @@
 using System.Reflection;
 using WorkOps.Contracts.Common;
 using WorkOps.Domain.Common;
+using WorkOps.Domain.Projects;
 using WorkOps.Domain.Tenancy;
+using WorkOps.Domain.WorkItems;
+using WorkOps.Infrastructure.Persistence;
 
 namespace WorkOps.ArchitectureTests;
 
@@ -33,7 +36,6 @@ public sealed class DependencyRuleTests
             .GetTypes()
             .Where(static type => type.Name.EndsWith("Request", StringComparison.Ordinal))
             .SelectMany(static type => type.GetProperties(BindingFlags.Instance | BindingFlags.Public))
-            .Where(static property => property.PropertyType == typeof(string))
             .Where(static property =>
                 property.GetCustomAttribute<SanitizeAsAttribute>() is null &&
                 property.GetCustomAttribute<SkipSanitizationAttribute>() is null)
@@ -47,7 +49,46 @@ public sealed class DependencyRuleTests
     [TestMethod]
     public void Tenant_owned_entities_are_marked_for_isolation()
     {
-        Assert.IsTrue(typeof(IWorkspaceOwned).IsAssignableFrom(typeof(WorkspaceMembership)));
+        var tenantOwnedTypes = new[]
+        {
+            typeof(WorkspaceMembership),
+            typeof(Project),
+            typeof(WorkItem),
+        };
+
+        Assert.IsTrue(tenantOwnedTypes.All(typeof(IWorkspaceOwned).IsAssignableFrom));
+    }
+
+    [TestMethod]
+    public void Api_endpoints_do_not_access_the_database_context_directly()
+    {
+        var offenders = typeof(Program).Assembly
+            .GetTypes()
+            .Where(static type => type.Namespace == "WorkOps.Api.Endpoints")
+            .SelectMany(static type => type.GetMethods(
+                BindingFlags.Static | BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+            .Where(static method => method.GetParameters().Any(
+                parameter => parameter.ParameterType == typeof(WorkOpsDbContext)))
+            .Select(static method => $"{method.DeclaringType?.FullName}.{method.Name}")
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        CollectionAssert.AreEqual(Array.Empty<string>(), offenders);
+    }
+
+    [TestMethod]
+    public void Public_contracts_do_not_expose_domain_entities()
+    {
+        var offenders = typeof(Contracts.AssemblyMarker).Assembly
+            .GetExportedTypes()
+            .SelectMany(static type => type.GetProperties(BindingFlags.Instance | BindingFlags.Public))
+            .Where(static property =>
+                property.PropertyType.Namespace?.StartsWith("WorkOps.Domain", StringComparison.Ordinal) == true)
+            .Select(static property => $"{property.DeclaringType?.FullName}.{property.Name}")
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        CollectionAssert.AreEqual(Array.Empty<string>(), offenders);
     }
 
     private static string[] ReferencedWorkOpsAssemblies(Assembly assembly) =>

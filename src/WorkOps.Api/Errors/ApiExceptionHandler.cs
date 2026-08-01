@@ -1,6 +1,11 @@
 using Microsoft.AspNetCore.Diagnostics;
+using WorkOps.Application.Common;
 using WorkOps.Application.Common.Sanitization;
+using WorkOps.Application.Common.Validation;
+using WorkOps.Application.Projects;
 using WorkOps.Application.Tenancy;
+using WorkOps.Application.WorkItems;
+using WorkOps.Domain.WorkItems;
 
 namespace WorkOps.Api.Errors;
 
@@ -40,6 +45,69 @@ internal sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) :
                     StatusCodes.Status409Conflict,
                     "Workspace slug is unavailable",
                     "workspace_slug_conflict",
+                    cancellationToken);
+                return true;
+
+            case DuplicateProjectKeyException:
+                await WriteProblemAsync(
+                    httpContext,
+                    StatusCodes.Status409Conflict,
+                    "Project key is unavailable",
+                    "project_key_conflict",
+                    cancellationToken);
+                return true;
+
+            case DuplicateWorkspaceMembershipException:
+                await WriteProblemAsync(
+                    httpContext,
+                    StatusCodes.Status409Conflict,
+                    "Workspace membership already exists",
+                    "workspace_membership_conflict",
+                    cancellationToken);
+                return true;
+
+            case ProjectArchivedException:
+                await WriteProblemAsync(
+                    httpContext,
+                    StatusCodes.Status409Conflict,
+                    "Project is archived",
+                    "project_archived",
+                    cancellationToken);
+                return true;
+
+            case ConcurrencyConflictException:
+                await WriteProblemAsync(
+                    httpContext,
+                    StatusCodes.Status409Conflict,
+                    "The resource changed since it was read",
+                    "concurrency_conflict",
+                    cancellationToken);
+                return true;
+
+            case InvalidWorkItemTransitionException:
+                await WriteProblemAsync(
+                    httpContext,
+                    StatusCodes.Status422UnprocessableEntity,
+                    "Work item transition is not allowed",
+                    "invalid_work_item_transition",
+                    cancellationToken);
+                return true;
+
+            case InvalidAssigneeException:
+                await WriteProblemAsync(
+                    httpContext,
+                    StatusCodes.Status422UnprocessableEntity,
+                    "Assignee is not an active workspace member",
+                    "invalid_assignee",
+                    cancellationToken);
+                return true;
+
+            case RequestValidationException validation:
+                await WriteProblemAsync(
+                    httpContext,
+                    StatusCodes.Status422UnprocessableEntity,
+                    "Submitted input is invalid",
+                    validation.Code,
                     cancellationToken);
                 return true;
 

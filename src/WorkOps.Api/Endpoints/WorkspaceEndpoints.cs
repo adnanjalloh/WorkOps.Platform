@@ -22,8 +22,33 @@ internal static class WorkspaceEndpoints
             .WithMetadata(new WorkspaceContextRequirement(WorkspaceContextSource.Route))
             .RequireAuthorization(Permissions.MembersRead)
             .WithName("ListWorkspaceMembers");
+        group.MapPost("/{workspaceId:guid}/invitations", InviteMemberAsync)
+            .WithMetadata(new WorkspaceContextRequirement(WorkspaceContextSource.Route))
+            .RequireAuthorization(Permissions.MembersManage)
+            .WithName("InviteWorkspaceMember");
 
         return endpoints;
+    }
+
+    private static async Task<IResult> InviteMemberAsync(
+        [SkipSanitization(Reason = "The route value is parsed as a non-empty Guid before use.")]
+        Guid workspaceId,
+        InviteWorkspaceMemberRequest request,
+        WorkspaceMembershipService membershipService,
+        CancellationToken cancellationToken)
+    {
+        var member = await membershipService.InviteAsync(
+            request.Subject,
+            request.DisplayName,
+            request.Role,
+            cancellationToken);
+        return Results.Created(
+            $"/api/v1/workspaces/{workspaceId:D}/members",
+            new WorkspaceMemberResponse(
+                member.UserId,
+                member.DisplayName,
+                member.Role.ToString(),
+                member.IsActive));
     }
 
     private static async Task<IResult> CreateWorkspaceAsync(

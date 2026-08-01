@@ -17,6 +17,18 @@ internal sealed class WorkspaceStore(WorkOpsDbContext dbContext) : IWorkspaceSto
 
     public void Add(WorkspaceMembership membership) => dbContext.WorkspaceMemberships.Add(membership);
 
+    public Task<WorkspaceMembership?> FindCurrentMembershipAsync(
+        Guid userId,
+        CancellationToken cancellationToken) => dbContext.WorkspaceMemberships.SingleOrDefaultAsync(
+            membership => membership.UserId == userId,
+            cancellationToken);
+
+    public Task<bool> IsCurrentMemberActiveAsync(
+        Guid userId,
+        CancellationToken cancellationToken) => dbContext.WorkspaceMemberships.AnyAsync(
+            membership => membership.UserId == userId && membership.IsActive,
+            cancellationToken);
+
     public Task<Workspace?> GetCurrentAsync(CancellationToken cancellationToken) =>
         dbContext.Workspaces
             .AsNoTracking()

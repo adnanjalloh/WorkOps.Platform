@@ -44,4 +44,14 @@ public sealed class InputSanitizerTests
 
         Assert.AreEqual("oidc|user@example.org", result);
     }
+
+    [DataRow("%wildcard")]
+    [DataRow("_wildcard")]
+    [DataRow("<script>")]
+    [TestMethod]
+    public void Search_text_rejects_wildcards_and_active_content(string submitted)
+    {
+        Assert.ThrowsExactly<InputRejectedException>(
+            () => _sanitizer.Apply(submitted, InputProfile.SearchText, "query.search"));
+    }
 }
