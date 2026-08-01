@@ -36,3 +36,10 @@ first release.
   validation, a fail-closed scanner port, opaque tenant-separated storage, and SHA-256 metadata.
 - PostgreSQL, Redis, storage, and HTTP regression tests for quota races, cache/file isolation,
   malicious uploads, oversized files, and non-disclosing cross-workspace downloads.
+- Server-generated correlation/trace diagnostics, structured Serilog JSON output, and OpenTelemetry
+  instrumentation with optional OTLP export.
+- Deny-by-default CORS, user/IP rate limiting, HTTP security headers, header bounds, production
+  HSTS/HTTPS rules, and Development-only OpenAPI JSON.
+- Tenant/user/method/route scoped project-create idempotency with canonical request hashing,
+  persisted successful responses, expiry, replay, mismatch denial, and a database race boundary.
+- Low-cardinality outbox duration/backlog metrics and a conservative local load-smoke script.

@@ -35,12 +35,18 @@ POST /api/v1/work-items/{workItemId}/attachments
 GET  /api/v1/attachments/{attachmentId}
 ```
 
+`POST /api/v1/projects/` also accepts an optional `Idempotency-Key` header. Repeat the exact request
+to receive the original `201` response with `Idempotency-Replayed: true`; changing the body while
+reusing the key produces a safe `409`.
+
 Run the Compose stack to use the local identity provider, PostgreSQL, Redis, and RabbitMQ. The automated
 suite executes the backend golden flow with owner, contributor, viewer, and outsider identities. It
 verifies the atomic transition/audit/outbox transaction, a real broker publish, duplicate-safe
 notification delivery, assignment, labels, transitions, tenant and role boundaries, pagination,
 filtering, stale-version handling, feature quotas, cache invalidation, secure attachment validation,
-exact downloads, and cross-workspace file denial. No hosted demo is claimed yet.
+exact downloads, and cross-workspace file denial. The hardening tests additionally verify
+correlation/trace diagnostics, rate limiting, CORS denial, security headers, production HSTS/OpenAPI
+behavior, and submitted-value absence from tested logs. No hosted demo is claimed yet.
 
 ## Planned demo script
 

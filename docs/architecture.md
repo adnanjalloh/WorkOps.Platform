@@ -33,8 +33,8 @@ flowchart TB
     Worker --> Broker["RabbitMQ"]
     Broker --> Notifications["Idempotent notification handler"]
     Notifications --> Db
-    Api -. traces and metrics .-> Telemetry["OpenTelemetry collector"]
-    Worker -. traces and metrics .-> Telemetry
+    Api -- optional OTLP --> Telemetry["OpenTelemetry collector"]
+    Worker -- optional OTLP --> Telemetry
 ```
 
 Docker Compose currently runs the API, PostgreSQL, Redis, RabbitMQ, and a local identity provider
@@ -121,9 +121,9 @@ consumer retries once before routing a persistent failure to a durable failed-me
 Cross-workspace access, stale versions, concurrent claims, real broker routing, and duplicate
 delivery are covered by automated tests. Redis tests prove distinct tenant keys and invalidation;
 PostgreSQL tests prove concurrent project reservations cannot exceed the plan limit; storage and
-HTTP tests prove tenant-separated file paths and non-disclosing cross-workspace downloads. Full
-tracing and exported metrics are planned for the production-hardening milestone; the current code
-emits low-cardinality messaging and cache result counters.
+HTTP tests prove tenant-separated file paths and non-disclosing cross-workspace downloads. Tracing
+and metrics cover requests, outbound HTTP, PostgreSQL, runtime, messaging, cache results, job
+duration, and outbox backlog. OTLP export is disabled until an endpoint is configured.
 
 ## Feature and attachment paths
 
@@ -139,9 +139,24 @@ name. Metadata is committed only after storage succeeds; a failed database commi
 best-effort file delete. Downloads first resolve tenant-filtered metadata and then open the private
 tenant path.
 
+## HTTP reliability and diagnostics
+
+Every request receives a server-generated correlation identifier derived from the active trace and
+returned in `X-Correlation-Id`. Problem Details also carry correlation and trace identifiers. JSON
+logs use the same structured scope without accepting caller-controlled correlation values.
+
+Project creation optionally accepts `Idempotency-Key`. The application scopes a record by workspace,
+authenticated user, method, canonical route, and sanitized key. It stores a SHA-256 hash of the
+canonical sanitized request and the successful response in the same transaction as the project,
+quota update, and audit event. An exact retry replays `201`; a changed request receives `409`; a
+database primary key prevents two first writers from both committing. Expired records are replaced
+on the next use of the same scoped key.
+
 ## Decisions
 
 - [ADR 0001 - modular monolith](adr/0001-modular-monolith.md)
 - [ADR 0002 - tenant isolation](adr/0002-tenant-isolation.md)
 - [ADR 0003 - outbox delivery](adr/0003-outbox-delivery.md)
+- [ADR 0004 - OIDC provider boundary](adr/0004-oidc-provider-boundary.md)
 - [ADR 0005 - file storage security](adr/0005-file-storage-security.md)
+- [ADR 0006 - HTTP idempotency](adr/0006-http-idempotency.md)

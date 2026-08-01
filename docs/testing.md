@@ -2,7 +2,7 @@
 
 ## Current evidence
 
-The caching, limits, and secure-files milestone includes four test projects with 73 tests:
+The production-hardening milestone includes four test projects with 78 tests:
 
 - Unit: workspace identifiers, sanitization malicious corpus, role permissions, project archiving,
   work-item state transitions and updates, version-token conversion, background tenant context,
@@ -19,7 +19,9 @@ The caching, limits, and secure-files milestone includes four test projects with
   pagination and filters, archive behavior, stale-version conflicts, atomic audit/outbox evidence,
   duplicate delivery suppression, notification reads, audit authorization, replay protection,
   feature limit responses and plan changes, hostile upload rejection, exact attachment download,
-  and cross-workspace attachment denial.
+  and cross-workspace attachment denial, correlation/trace response metadata, security headers,
+  tested-log redaction, untrusted CORS denial, deterministic rate-limit responses, production HSTS
+  and hidden OpenAPI, plus idempotent replay, changed-body denial, and scope isolation.
 - Architecture: dependency direction, request sanitization-policy coverage, and tenant-owned entity
   classification, plus API persistence-boundary and public-contract isolation checks.
 
@@ -27,14 +29,15 @@ These tests prove the implemented identity, workspace, project, work-item, audit
 Redis, feature-limit, file-storage, and idempotent development-notification flow. The functional
 suite replaces external message/file scanner behavior with deterministic test adapters, while the
 integration suite independently proves the real broker, cache, database, and local-storage adapters.
-The tests do not yet prove full observability or production readiness.
+The tests prove registration and HTTP behavior for observability/hardening; they do not prove a
+specific collector backend, reverse-proxy configuration, or production capacity.
 
 ## Planned suites
 
 - Additional message-transport tests for connection recovery and failed-queue operator workflows.
-- Functional tests for HTTP idempotency mismatch and rate limiting.
 - Security regression tests for invalid tokens, privilege escalation, hostile uploads, oversized
-  requests, safe logs/errors, CORS, and production OpenAPI behavior.
+  requests, safe logs/errors, CORS, and production OpenAPI behavior remain active and expand with
+  each endpoint family.
 
 Container-backed suites use supported providers rather than mocked database behavior. Time-dependent
 tests use `TimeProvider`; tests do not depend on sleeps or local time.

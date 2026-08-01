@@ -29,14 +29,14 @@ and deployment environment.
 | Stolen valid JWT | Partial | Short lifetime is validated; revocation and deployed-provider operations remain external concerns |
 | Privilege escalation | Partial | Central permission policies, contributor/viewer invitation limits, endpoint checks, viewer audit denial, active-member assignment checks, and administrative audit evidence exist; broader membership management remains planned |
 | Lost concurrent update | Implemented | Opaque `xmin` token, expected-version updates, real PostgreSQL collision test, and safe `409 Conflict` |
-| Replayed HTTP request | Planned | Scoped idempotency key plus canonical body hash and unique constraint |
+| Replayed HTTP request | Implemented for project creation | Tenant/user/method/route/key scope, canonical sanitized-body hash, persisted `201` response, 24-hour expiry, primary key race boundary, exact-replay and mismatch tests |
 | Duplicate or reordered message | Partial | Stable message ID, tenant-scoped inbox and notification uniqueness, explicit acknowledgments, bounded retries, and duplicate tests exist; a business sequence guard for independently reordered events is not implemented |
 | Compromised message transport | Partial | Internal envelopes are validated, payloads omit submitted content, invalid messages enter a failed queue, and handlers establish tenant context; broker TLS and production credentials remain deployment concerns |
 | Malicious attachment | Implemented baseline | 512 KiB bound, filename/media/signature allowlists, strict text decoding, fail-closed scanner port, opaque private storage, authorized download, and hostile-upload tests; production antivirus remains required |
 | Secret leakage in logs or CI | Partial | Input rejection logs metadata only; Gitleaks and least-privilege workflows exist; broader redaction tests remain |
 | Cross-workspace cache collision | Implemented | Tenant-derived Redis keys, short expiry, explicit invalidation, PostgreSQL fallback, real Redis isolation tests |
 | Mass assignment | Implemented for current contracts | Explicit request contracts omit tenant ownership and persistence fields; assignees must be active current-workspace members |
-| Resource exhaustion | Partial | Request bodies, project/audit/notification pagination, leases, message prefetch, and job retry counts are bounded; HTTP rate limits remain planned |
+| Resource exhaustion | Implemented baseline | Request bodies/headers and pagination are bounded; jobs have leases, prefetch, and retry ceilings; user/IP fixed-window rate limits return safe `429`; capacity/load tuning remains deployment-specific |
 | Compromised CI action | Implemented baseline | Full commit-SHA pins, minimal token permissions, dependency review |
 | Over-privileged deployment identity | Planned | Workload identity, scoped roles, protected environments, auditable deploy job |
 

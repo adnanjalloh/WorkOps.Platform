@@ -7,11 +7,11 @@ A production-minded multi-tenant workflow API being built with ASP.NET Core and 
 
 ## Status
 
-**Caching, limits, and secure-files milestone - not yet a production release.** The repository now
-provides tenant-aware Redis feature caching, database-enforced project quotas, and private work-item
-attachments in addition to the tenant, concurrency, audit, outbox, RabbitMQ, and notification
-capabilities. Broader observability, HTTP hardening, and a runnable demo script remain planned.
-There is no hosted demo.
+**Production-hardening milestone - not yet a production release.** The repository now adds
+structured JSON logs, correlation and trace diagnostics, OpenTelemetry instrumentation, explicit
+CORS, rate limits, security headers, production-only HTTPS/HSTS rules, development-only OpenAPI,
+and scoped HTTP idempotency to the tenant, cache, file, audit, and messaging capabilities. Security
+release automation and a runnable golden-scenario demo remain. There is no hosted demo.
 
 ## Thirty-second overview
 
@@ -39,8 +39,10 @@ flowchart LR
 See [architecture](docs/architecture.md),
 [ADR 0001: modular monolith](docs/adr/0001-modular-monolith.md), and
 [ADR 0002: tenant isolation](docs/adr/0002-tenant-isolation.md), and
-[ADR 0003: outbox delivery](docs/adr/0003-outbox-delivery.md), and
-[ADR 0005: file storage security](docs/adr/0005-file-storage-security.md).
+[ADR 0003: outbox delivery](docs/adr/0003-outbox-delivery.md),
+[ADR 0004: OIDC provider boundary](docs/adr/0004-oidc-provider-boundary.md),
+[ADR 0005: file storage security](docs/adr/0005-file-storage-security.md), and
+[ADR 0006: HTTP idempotency](docs/adr/0006-http-idempotency.md).
 
 ## Golden scenario
 
@@ -83,6 +85,13 @@ Implemented:
 - bounded attachment reads, filename and media-type allowlists, signature inspection, strict UTF-8
   text validation, scanner-before-storage flow, opaque names, hashes, and private tenant paths;
 - tenant-filtered attachment metadata and authorized downloads with `nosniff` responses;
+- server-generated correlation IDs and trace IDs in response headers and safe Problem Details;
+- Serilog JSON output with structured scopes plus OpenTelemetry request, HTTP, PostgreSQL, runtime,
+  messaging, cache, and outbox-backlog instrumentation with optional OTLP export;
+- user/IP-partitioned fixed-window rate limiting, deny-by-default CORS, API security headers, bounded
+  headers, HSTS/HTTPS outside development/test, and OpenAPI documents only in development;
+- tenant/user/method/route scoped project-create idempotency with canonical request hashes, a
+  database uniqueness boundary, persisted successful responses, 24-hour expiry, and mismatch denial;
 - PostgreSQL migrations and container-backed security regression tests.
 
 Planned controls are documented in [security](docs/security.md) and the
@@ -124,12 +133,15 @@ dotnet build -c Release --no-restore
 dotnet test -c Release --no-build --logger "trx" --collect:"XPlat Code Coverage"
 ```
 
-The current 73 tests cover the identity and project boundaries plus safe audit metadata, atomic
+The current 78 tests cover the identity and project boundaries plus safe audit metadata, atomic
 outbox creation, real PostgreSQL lease contention, deterministic backoff, bounded failure and
 replay, real RabbitMQ publishing, internal-message validation, duplicate inbox handling, and a
 single visible notification after repeated delivery. They also prove tenant-separated Redis and
 file storage, cache invalidation, concurrent quota enforcement, hostile upload rejection, and
-cross-workspace download denial. The full strategy and honest gaps are in [testing](docs/testing.md).
+cross-workspace download denial. They also verify production OpenAPI/HSTS behavior, CORS denial,
+rate-limit responses, correlation metadata, submitted-value absence from tested logs/errors, and
+idempotent replay/mismatch behavior. The full strategy and honest gaps are in
+[testing](docs/testing.md).
 
 ## Review paths
 
@@ -153,7 +165,7 @@ cross-workspace download denial. The full strategy and honest gaps are in [testi
 - [x] Project/work-item vertical slice with optimistic concurrency
 - [x] Transactional audit and outbox processing with idempotent notification delivery
 - [x] Tenant-aware caching, feature limits, and secure file attachments
-- [ ] OpenTelemetry, structured logging, rate limiting, and production hardening
+- [x] OpenTelemetry, structured logging, rate limiting, and production hardening
 - [ ] Reproducible golden-scenario demo and release evidence
 
 See [CHANGELOG](CHANGELOG.md), [CONTRIBUTING](CONTRIBUTING.md), and [SECURITY](SECURITY.md).

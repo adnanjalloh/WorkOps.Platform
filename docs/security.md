@@ -51,21 +51,34 @@ certification claim.
 - tenant-filtered attachment metadata, work-item ownership constraints, permission-protected upload
   and download, non-disclosing cross-workspace denial, attachment download responses with
   `X-Content-Type-Options: nosniff`, and no archive support;
+- server-generated correlation/trace identifiers in headers and Problem Details, with caller input
+  excluded from the correlation scope;
+- Serilog JSON events that use structured properties, log input-rejection metadata rather than
+  values, and omit exception/provider details from background retry warnings;
+- OpenTelemetry instrumentation without user IDs, email, tokens, titles, or submitted values in
+  custom metric labels; OTLP export is disabled by default;
+- deny-by-default CORS, fixed-window user/IP rate limiting, request-header and body bounds, HSTS and
+  HTTPS redirection outside development/test, API security headers, and no server header;
+- runtime OpenAPI document exposure only in Development, with no Swagger UI installed;
+- optional project-create idempotency scoped by tenant, authenticated user, method, route, and key;
+  request hashes prevent key reuse with changed input and the database primary key protects the
+  first-write boundary;
 - PostgreSQL-backed tests for tenant filtering plus HTTP tests for token rejection, cross-workspace
   denial, inactive membership, suspension, capabilities, malicious input, assignment boundaries,
   invalid state changes, concurrent-update conflicts, audit authorization, duplicate delivery,
   cache/file isolation, quota races, path traversal, MIME/signature mismatch, invalid UTF-8, and
-  oversized uploads.
+  oversized uploads, untrusted origins, rate limits, production HSTS/OpenAPI behavior, safe
+  diagnostics, tested-log redaction, and idempotency replay/mismatch behavior.
 
 ## Required before the first release
 
-- add request-size limits, explicit CORS, HTTPS enforcement in deployed environments, rate limits,
-  and production-safe OpenAPI behavior;
 - replace the development file scanner with a monitored antivirus service and replace ephemeral
   local storage with durable private object storage before production use;
 - redact credentials, authorization headers, personal data, and user-controlled content from logs;
 - prove cross-workspace denial, privilege boundaries, upload rejection, JWT rejection, and log/error
   redaction through automated tests.
+- configure trusted reverse-proxy forwarding deliberately when TLS terminates before the process;
+  do not accept forwarded headers from arbitrary networks.
 
 ## Secrets
 

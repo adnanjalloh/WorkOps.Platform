@@ -56,16 +56,35 @@ The endpoint cannot replay pending, processing, or processed messages. Every acc
 an audit event. Failed-queue inspection and republishing remain restricted broker-operator tasks;
 message bodies and credentials must not be copied into tickets or logs.
 
-The current code emits low-cardinality `workops.outbox.results` and
-`workops.notifications.results` counters. Export configuration and backlog gauges arrive with the
-broader observability milestone.
+The current code emits low-cardinality message result, outbox duration, and outbox backlog metrics.
 
-## Planned diagnostics
+## Diagnostics and HTTP controls
 
-Audit rows and messages already carry the server-generated request correlation identifier. A later
-middleware and OpenTelemetry milestone will expose a deliberate response correlation contract and
-cover ASP.NET Core, outbound HTTP, EF Core, and messaging with traces. Metrics will continue to
-avoid personal data and high-cardinality labels.
+Every response returns `X-Correlation-Id`; Problem Details also include `correlationId` and
+`traceId`. Search the structured JSON logs using that value, then follow the trace through ASP.NET
+Core, outbound HTTP, PostgreSQL, and `WorkOps.Messaging`. Audit and message rows retain the same
+server-generated correlation identifier where the business transaction records one.
 
-A future runbook will trace one failed request from response correlation ID to logs, trace spans,
-database/outbox state, retry history, and safe recovery.
+Set `Observability:Otlp:Enabled=true` and an absolute HTTP(S) `Observability:Otlp:Endpoint` to export
+traces and metrics. The application reports request and runtime metrics plus low-cardinality cache,
+message result, outbox duration, and outbox backlog instruments. Do not add user IDs, email, tokens,
+work-item titles, raw URLs, or submitted values as labels.
+
+Rate limiting defaults to 60 requests per 60 seconds per authenticated subject, or per remote IP
+before authentication. Health endpoints are exempt. `Cors:AllowedOrigins` is empty by default;
+production origins must be explicit HTTPS origins. OpenAPI JSON is available only in Development at
+`/openapi/v1.json`; no interactive UI is installed.
+
+Project creation supports an optional `Idempotency-Key` header. Exact retries return the stored
+`201` response and `Idempotency-Replayed: true`; changed input returns
+`idempotency_key_conflict`. Records expire after 24 hours and an expiry index supports a future
+scheduled purge.
+
+Run a conservative authenticated local smoke check without printing the token:
+
+```bash
+WORKOPS_ACCESS_TOKEN=... WORKOPS_WORKSPACE_ID=... ./scripts/load-smoke.sh
+```
+
+The script defaults to 20 sequential feature reads and labels its output as a local smoke result,
+not a production benchmark.
