@@ -38,17 +38,31 @@ certification claim.
 - bounded outbox attempts, safe generic failure codes, a failed-message queue, and no raw exception
   persistence;
 - owner/administrator-only audit queries and failed-outbox replay, with replay itself audited;
+- Redis feature cache keys derived from the established workspace context, explicit write
+  invalidation, short expiry, low-cardinality metrics, and database fallback;
+- an active-project quota enforced on a tenant-owned PostgreSQL row with optimistic concurrency,
+  preventing two concurrent requests from both consuming the final slot;
+- attachment filenames and media types sanitized with allowlists, a 512 KiB per-file limit checked
+  before and during buffering, and strict extension/media-type/signature agreement;
+- PDF and PNG magic-byte checks, strict UTF-8/control-character checks for text, a scanner port that
+  fails closed by default, and a deliberately named development-only clean scanner;
+- opaque server-generated storage names, tenant-separated paths outside the web root, SHA-256
+  metadata, and cleanup after a failed metadata transaction;
+- tenant-filtered attachment metadata, work-item ownership constraints, permission-protected upload
+  and download, non-disclosing cross-workspace denial, attachment download responses with
+  `X-Content-Type-Options: nosniff`, and no archive support;
 - PostgreSQL-backed tests for tenant filtering plus HTTP tests for token rejection, cross-workspace
   denial, inactive membership, suspension, capabilities, malicious input, assignment boundaries,
-  invalid state changes, concurrent-update conflicts, audit authorization, and duplicate delivery.
+  invalid state changes, concurrent-update conflicts, audit authorization, duplicate delivery,
+  cache/file isolation, quota races, path traversal, MIME/signature mismatch, invalid UTF-8, and
+  oversized uploads.
 
 ## Required before the first release
 
-- keep tenant identifiers in future cache keys and file paths as they are already kept in current
-  database rows, messages, audit events, and idempotency records;
-- allowlist upload types, inspect signatures, generate server-side names, and authorize downloads;
 - add request-size limits, explicit CORS, HTTPS enforcement in deployed environments, rate limits,
   and production-safe OpenAPI behavior;
+- replace the development file scanner with a monitored antivirus service and replace ephemeral
+  local storage with durable private object storage before production use;
 - redact credentials, authorization headers, personal data, and user-controlled content from logs;
 - prove cross-workspace denial, privilege boundaries, upload rejection, JWT rejection, and log/error
   redaction through automated tests.

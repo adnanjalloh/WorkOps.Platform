@@ -29,3 +29,10 @@ first release.
 - Publisher-confirmed RabbitMQ routing, explicit consumer acknowledgments, and a failed-message queue.
 - Tenant-scoped inbox deduplication and a development notification feed.
 - Protected, audited replay for failed outbox messages.
+- Tenant-aware Redis feature caching with expiry, invalidation, stampede protection, and database
+  fallback.
+- `Starter` and `Team` workspace plans with an optimistic-concurrency protected active-project quota.
+- Secure work-item attachment upload and download with bounded reads, filename/media/signature
+  validation, a fail-closed scanner port, opaque tenant-separated storage, and SHA-256 metadata.
+- PostgreSQL, Redis, storage, and HTTP regression tests for quota races, cache/file isolation,
+  malicious uploads, oversized files, and non-disclosing cross-workspace downloads.

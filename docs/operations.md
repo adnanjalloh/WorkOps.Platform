@@ -4,7 +4,7 @@
 
 - `/health/live` reports whether the process can serve requests and intentionally runs no dependency
   checks.
-- `/health/ready` verifies PostgreSQL connectivity and, when messaging is enabled, RabbitMQ
+- `/health/ready` verifies PostgreSQL connectivity and, when enabled, RabbitMQ and Redis
   connectivity. It reports unhealthy when a required dependency is unavailable.
 
 ## Local commands
@@ -18,7 +18,19 @@ docker compose down
 
 Standalone hosts leave `Messaging:Enabled` false unless a broker is deliberately configured.
 Docker Compose enables RabbitMQ, applies the database migration, starts the leased outbox worker,
-and starts the notification consumer.
+starts the notification consumer, and enables authenticated Redis caching. It also enables a local
+clean-scanner stub and stores attachments in `/tmp/workops-attachments` inside the API container.
+That directory is temporary and is not a production durability design.
+
+## Cache and attachment configuration
+
+`Cache:Enabled` is false by default. When enabled, `ConnectionStrings:Redis` is required. Cache
+outages fall back to PostgreSQL for entitlement reads and never bypass the PostgreSQL quota.
+
+`Files:RootPath` must be absolute. `Files:DevelopmentScannerEnabled` is false by default, causing
+uploads to fail closed with `503`. Compose enables the stub only for local demonstration. A deployed
+environment must provide private durable storage, backups/retention, malware scanning, and alerts
+for missing objects or scanner failures before attachments are considered production-ready.
 
 ## Message delivery and recovery
 

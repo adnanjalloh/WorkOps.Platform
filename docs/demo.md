@@ -29,13 +29,18 @@ POST /api/v1/work-items/{workItemId}/transitions
 GET  /api/v1/audit-events
 GET  /api/v1/notifications
 POST /api/v1/operations/outbox/{messageId}/replay
+GET  /api/v1/features
+PUT  /api/v1/workspaces/{workspaceId}/plan
+POST /api/v1/work-items/{workItemId}/attachments
+GET  /api/v1/attachments/{attachmentId}
 ```
 
-Run the Compose stack to use the local identity provider, PostgreSQL, and RabbitMQ. The automated
+Run the Compose stack to use the local identity provider, PostgreSQL, Redis, and RabbitMQ. The automated
 suite executes the backend golden flow with owner, contributor, viewer, and outsider identities. It
 verifies the atomic transition/audit/outbox transaction, a real broker publish, duplicate-safe
 notification delivery, assignment, labels, transitions, tenant and role boundaries, pagination,
-filtering, and stale-version handling. No hosted demo is claimed yet.
+filtering, stale-version handling, feature quotas, cache invalidation, secure attachment validation,
+exact downloads, and cross-workspace file denial. No hosted demo is claimed yet.
 
 ## Planned demo script
 

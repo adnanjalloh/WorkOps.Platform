@@ -2,10 +2,11 @@
 
 ## Current scope
 
-The current milestone carries the first business slice through reliable asynchronous delivery. The
-API validates external JWTs, establishes tenant context, and uses tenant-filtered persistence for
-projects, work items, audit events, outbox/inbox records, and notifications. Domain behavior owns
-project archiving, work-item transitions, and the outbox failure state.
+The current milestone carries the business slice through reliable delivery, feature enforcement,
+tenant-aware caching, and private attachments. The API validates external JWTs, establishes tenant
+context, and uses tenant-filtered persistence for projects, work items, subscriptions, attachments,
+audit events, outbox/inbox records, and notifications. Domain behavior owns project quotas,
+archiving, work-item transitions, and the outbox failure state.
 
 | Project | Role | Allowed project dependencies |
 |---|---|---|
@@ -26,8 +27,8 @@ flowchart TB
     User["Authenticated API client"] --> Api["ASP.NET Core API"]
     Api --> Oidc["OIDC provider"]
     Api --> Db[("PostgreSQL")]
-    Api -. planned .-> Cache[("Redis")]
-    Api -. planned .-> Files["Private file storage"]
+    Api --> Cache[("Redis")]
+    Api --> Files["Private tenant file storage"]
     Worker["Leased outbox worker"] --> Db
     Worker --> Broker["RabbitMQ"]
     Broker --> Notifications["Idempotent notification handler"]
@@ -36,8 +37,9 @@ flowchart TB
     Worker -. traces and metrics .-> Telemetry
 ```
 
-Docker Compose currently runs the API, PostgreSQL, RabbitMQ, and a local identity provider with an
-imported synthetic realm. Redis, file storage, and telemetry remain future milestones.
+Docker Compose currently runs the API, PostgreSQL, Redis, RabbitMQ, and a local identity provider
+with an imported synthetic realm. The local attachment adapter writes to an API-only temporary
+directory for demonstration; production object storage and telemetry export remain future work.
 
 ## Tenant request path
 
@@ -117,12 +119,29 @@ five attempts, and remain recoverable through a protected, audited replay endpoi
 consumer retries once before routing a persistent failure to a durable failed-message queue.
 
 Cross-workspace access, stale versions, concurrent claims, real broker routing, and duplicate
-delivery are covered by automated tests. Full tracing and exported metrics are planned for the
-production-hardening milestone; the current code emits low-cardinality messaging result counters.
+delivery are covered by automated tests. Redis tests prove distinct tenant keys and invalidation;
+PostgreSQL tests prove concurrent project reservations cannot exceed the plan limit; storage and
+HTTP tests prove tenant-separated file paths and non-disclosing cross-workspace downloads. Full
+tracing and exported metrics are planned for the production-hardening milestone; the current code
+emits low-cardinality messaging and cache result counters.
+
+## Feature and attachment paths
+
+Feature reads cache only a safe entitlement snapshot under
+`workops:{workspace-id}:features`. Writes enforce the active-project limit against the tenant-filtered
+subscription row in PostgreSQL, then invalidate the cache. A short Redis lock limits concurrent
+cache fills; cache unavailability falls back to PostgreSQL, so Redis never becomes the authority for
+the quota.
+
+Attachments are loaded through a tenant-filtered work item, bounded in memory, checked against an
+extension/media-type/signature allowlist, scanned through a port, hashed, and stored with a generated
+name. Metadata is committed only after storage succeeds; a failed database commit triggers a
+best-effort file delete. Downloads first resolve tenant-filtered metadata and then open the private
+tenant path.
 
 ## Decisions
 
 - [ADR 0001 - modular monolith](adr/0001-modular-monolith.md)
 - [ADR 0002 - tenant isolation](adr/0002-tenant-isolation.md)
 - [ADR 0003 - outbox delivery](adr/0003-outbox-delivery.md)
-- File storage will receive an ADR when introduced.
+- [ADR 0005 - file storage security](adr/0005-file-storage-security.md)

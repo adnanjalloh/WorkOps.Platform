@@ -7,11 +7,10 @@ A production-minded multi-tenant workflow API being built with ASP.NET Core and 
 
 ## Status
 
-**Audit and reliable-delivery milestone - not yet a production release.** The repository now
-provides tenant-safe projects and work items, database-enforced optimistic concurrency, safe audit
-history, a transactional outbox, leased retries with bounded backoff, publisher-confirmed RabbitMQ
-delivery, an idempotent inbox, and a development notification feed. Caching, feature limits, file
-handling, broader observability, production hardening, and a runnable demo script remain planned.
+**Caching, limits, and secure-files milestone - not yet a production release.** The repository now
+provides tenant-aware Redis feature caching, database-enforced project quotas, and private work-item
+attachments in addition to the tenant, concurrency, audit, outbox, RabbitMQ, and notification
+capabilities. Broader observability, HTTP hardening, and a runnable demo script remain planned.
 There is no hosted demo.
 
 ## Thirty-second overview
@@ -40,7 +39,8 @@ flowchart LR
 See [architecture](docs/architecture.md),
 [ADR 0001: modular monolith](docs/adr/0001-modular-monolith.md), and
 [ADR 0002: tenant isolation](docs/adr/0002-tenant-isolation.md), and
-[ADR 0003: outbox delivery](docs/adr/0003-outbox-delivery.md).
+[ADR 0003: outbox delivery](docs/adr/0003-outbox-delivery.md), and
+[ADR 0005: file storage security](docs/adr/0005-file-storage-security.md).
 
 ## Golden scenario
 
@@ -76,6 +76,13 @@ Implemented:
 - RabbitMQ publisher confirms, durable routing, a failed-message queue, and explicit acknowledgments;
 - inbox uniqueness that makes notification delivery idempotent under retries;
 - permission-protected audit reads and audited failed-outbox replay;
+- tenant-derived Redis keys, five-minute feature snapshots, explicit invalidation, and a short
+  distributed cache-fill lock;
+- PostgreSQL-backed `Starter` and `Team` subscriptions with an optimistic-concurrency protected
+  active-project quota;
+- bounded attachment reads, filename and media-type allowlists, signature inspection, strict UTF-8
+  text validation, scanner-before-storage flow, opaque names, hashes, and private tenant paths;
+- tenant-filtered attachment metadata and authorized downloads with `nosniff` responses;
 - PostgreSQL migrations and container-backed security regression tests.
 
 Planned controls are documented in [security](docs/security.md) and the
@@ -117,11 +124,12 @@ dotnet build -c Release --no-restore
 dotnet test -c Release --no-build --logger "trx" --collect:"XPlat Code Coverage"
 ```
 
-The current 52 tests cover the identity and project boundaries plus safe audit metadata, atomic
+The current 73 tests cover the identity and project boundaries plus safe audit metadata, atomic
 outbox creation, real PostgreSQL lease contention, deterministic backoff, bounded failure and
 replay, real RabbitMQ publishing, internal-message validation, duplicate inbox handling, and a
-single visible notification after repeated delivery. The full strategy and honest gaps are in
-[testing](docs/testing.md).
+single visible notification after repeated delivery. They also prove tenant-separated Redis and
+file storage, cache invalidation, concurrent quota enforcement, hostile upload rejection, and
+cross-workspace download denial. The full strategy and honest gaps are in [testing](docs/testing.md).
 
 ## Review paths
 
@@ -144,7 +152,7 @@ single visible notification after repeated delivery. The full strategy and hones
 - [x] Tenant and identity boundary with cross-workspace tests
 - [x] Project/work-item vertical slice with optimistic concurrency
 - [x] Transactional audit and outbox processing with idempotent notification delivery
-- [ ] Tenant-aware caching, feature limits, and secure file attachments
+- [x] Tenant-aware caching, feature limits, and secure file attachments
 - [ ] OpenTelemetry, structured logging, rate limiting, and production hardening
 - [ ] Reproducible golden-scenario demo and release evidence
 
