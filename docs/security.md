@@ -24,13 +24,15 @@ certification claim.
   development password are explicitly excluded from production use;
 - clean dependency boundaries checked by tests;
 - strict bearer-token validation for issuer, audience, signature, expiration, accepted algorithms,
-  and exactly one case-sensitive ASCII `sub` claim of at most 255 characters;
+  and exactly one case-sensitive `sub` claim of 1–255 printable ASCII characters (`U+0020` through
+  `U+007E`), preserved without trimming or normalization;
 - workspace context selected only from a route or header and accepted only after active membership
   lookup for the validated subject;
 - centralized role permissions and policy-based authorization on tenant endpoints;
 - non-disclosing `404` for absent or cross-workspace membership and `403` for suspended workspaces;
-- default-deny tenant query filters plus a save-time ownership guard for request, background, and
-  narrowly scoped provisioning writes, including missing-context and cross-workspace rejection;
+- default-deny tenant query filters plus a metadata-driven save guard for every filtered type,
+  including the `Workspace` root; request/background writes require the matching current tenant,
+  while root creation requires a matching narrowly scoped provisioning context;
 - named sanitization profiles on request surfaces, bounded request bodies, safe error responses, and
   logging that records metadata rather than submitted values;
 - tenant-filtered project and work-item queries backed by composite workspace ownership constraints;
@@ -61,9 +63,9 @@ certification claim.
   `X-Content-Type-Options: nosniff`, and no archive support;
 - server-generated correlation/trace identifiers in headers and Problem Details, with caller input
   excluded from the correlation scope;
-- Serilog JSON events that use structured properties, log input-rejection metadata rather than
-  values, and retain background exception diagnostics with only allowlisted message identifiers,
-  types, and outcomes;
+- Serilog JSON events that use structured properties and log input-rejection metadata rather than
+  values; outbox publish failures emit a sanitized message ID, allowlisted type, result, and failure
+  category without the exception object, payload, token, or connection string;
 - OpenTelemetry instrumentation without user IDs, email, tokens, titles, or submitted values in
   custom metric labels; versions derive from the release build, OTLP export is disabled by default,
   and production transport requires HTTPS or explicit internal-only cleartext opt-in;

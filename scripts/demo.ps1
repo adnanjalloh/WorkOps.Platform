@@ -114,7 +114,7 @@ function Show-Summary([string]$WorkspaceId, [string]$ProjectId, [string]$WorkIte
     Write-Host "  Project:   $ProjectId"
     Write-Host "  Work item: $WorkItemId"
     Write-Host '  Evidence:  authorization, tenant isolation, concurrency, audit, outbox notification'
-    Write-Host '  Tokens:    held in memory only; never printed or written'
+    Write-Host '  Tokens:    not intentionally printed or persisted by this script'
 }
 
 if ($Start) {
@@ -216,7 +216,7 @@ if ($projectReplay.Headers['Idempotency-Replayed'] -notcontains 'true') {
 }
 Write-Pass 'exact replay returned the original project'
 
-Write-Step 'Proving viewer write denial'
+Write-Step 'Checking viewer write denial'
 $viewerWrite = Invoke-JsonApi POST '/api/v1/projects/' $viewerToken $workspaceId @{
     name = 'Forbidden Project'
     key = "forbidden-$runId"
@@ -253,7 +253,7 @@ Assert-Status $transitioned 200 'work-item transition'
 $currentVersion = $transitioned.Body.version
 Write-Pass 'work item moved from Backlog to InProgress'
 
-Write-Step 'Proving stale-write and tenant boundaries'
+Write-Step 'Checking stale-write and tenant boundaries'
 $staleWrite = Invoke-JsonApi POST "/api/v1/work-items/$workItemId/transitions" $contributorToken $workspaceId @{
     targetStatus = 'Blocked'
     expectedVersion = $updatedVersion

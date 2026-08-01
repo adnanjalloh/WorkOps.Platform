@@ -42,7 +42,9 @@ for missing objects or scanner failures before attachments are considered produc
 Outbox messages move through `Pending`, `Processing`, `Processed`, and `Failed`. A worker claims one
 eligible row with a 30-second lease and PostgreSQL `FOR UPDATE SKIP LOCKED`. Publish failures use
 deterministic exponential backoff with jitter and stop after five attempts. Only a generic failure
-code is stored; exception text and broker credentials are never persisted.
+code is stored. Each publish failure emits one sanitized operator diagnostic containing the message
+ID, an allowlisted message type, retry/failure result, and a coarse failure category; the publisher
+exception, payload, token, and connection string are not passed to that diagnostic.
 
 RabbitMQ deliveries use manual acknowledgments and prefetch one. The consumer retries a transient
 handler failure once, then routes a repeated or invalid delivery to

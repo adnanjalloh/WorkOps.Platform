@@ -93,6 +93,12 @@ public sealed class TenantIdentityEndpointTests
             [new Claim("sub", "first"), new Claim("sub", "second"), new Claim("name", "Duplicate Subject")],
             [new Claim("sub", new string('a', 256)), new Claim("name", "Long Subject")],
             [new Claim("sub", "non-ascii-é"), new Claim("name", "Non ASCII Subject")],
+            [new Claim("sub", "contains\0nul"), new Claim("name", "NUL Subject")],
+            [new Claim("sub", "contains\rcarriage-return"), new Claim("name", "CR Subject")],
+            [new Claim("sub", "contains\nline-feed"), new Claim("name", "LF Subject")],
+            [new Claim("sub", "contains\ttab"), new Claim("name", "TAB Subject")],
+            [new Claim("sub", "contains\u001fcontrol"), new Claim("name", "C0 Subject")],
+            [new Claim("sub", "contains\u007fdelete"), new Claim("name", "DEL Subject")],
         ];
 
         foreach (var claims in invalidClaims)
@@ -144,15 +150,30 @@ public sealed class TenantIdentityEndpointTests
             "Subject Owner");
         var workspace = await CreateWorkspaceAsync(ownerClient, "Subject Boundary Team");
 
-        using var response = await ownerClient.PostAsJsonAsync(
-            new Uri($"/api/v1/workspaces/{workspace.Id:D}/invitations", UriKind.Relative),
-            new InviteWorkspaceMemberRequest(
-                new string('a', 256),
-                "Invalid Subject",
-                WorkspaceRole.Viewer.ToString()));
+        string[] invalidSubjects =
+        [
+            new string('a', 256),
+            "non-ascii-é",
+            "contains\0nul",
+            "contains\rcarriage-return",
+            "contains\nline-feed",
+            "contains\ttab",
+            "contains\u001fcontrol",
+            "contains\u007fdelete",
+        ];
 
-        Assert.AreEqual(HttpStatusCode.UnprocessableEntity, response.StatusCode);
-        await AssertProblemCodeAsync(response, "invalid_identity_subject");
+        foreach (var subject in invalidSubjects)
+        {
+            using var response = await ownerClient.PostAsJsonAsync(
+                new Uri($"/api/v1/workspaces/{workspace.Id:D}/invitations", UriKind.Relative),
+                new InviteWorkspaceMemberRequest(
+                    subject,
+                    "Invalid Subject",
+                    WorkspaceRole.Viewer.ToString()));
+
+            Assert.AreEqual(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+            await AssertProblemCodeAsync(response, "invalid_identity_subject");
+        }
     }
 
     [TestMethod]
@@ -193,18 +214,27 @@ public sealed class TenantIdentityEndpointTests
         var suspended = await CreateWorkspaceAsync(suspendedClient, "Suspended Team");
         var inactive = await CreateWorkspaceAsync(inactiveClient, "Inactive Team");
 
-        await using (var scope = _factory.Services.CreateAsyncScope())
+        await using (var suspendedScope = _factory.Services.CreateAsyncScope())
         {
-            var dbContext = scope.ServiceProvider.GetRequiredService<WorkOpsDbContext>();
-            var workspaceContext = scope.ServiceProvider.GetRequiredService<IWorkspaceContextAccessor>();
+            var dbContext = suspendedScope.ServiceProvider.GetRequiredService<WorkOpsDbContext>();
+            var workspaceContext = suspendedScope.ServiceProvider.GetRequiredService<IWorkspaceContextAccessor>();
             var suspendedWorkspace = await dbContext.Workspaces
                 .IgnoreQueryFilters()
                 .SingleAsync(workspace => workspace.Id == WorkOps.Domain.WorkspaceId.From(suspended.Id));
+
+            suspendedWorkspace.Suspend(DateTimeOffset.UtcNow);
+            workspaceContext.EstablishBackground(WorkOps.Domain.WorkspaceId.From(suspended.Id));
+            await dbContext.SaveChangesAsync();
+        }
+
+        await using (var inactiveScope = _factory.Services.CreateAsyncScope())
+        {
+            var dbContext = inactiveScope.ServiceProvider.GetRequiredService<WorkOpsDbContext>();
+            var workspaceContext = inactiveScope.ServiceProvider.GetRequiredService<IWorkspaceContextAccessor>();
             var inactiveMembership = await dbContext.WorkspaceMemberships
                 .IgnoreQueryFilters()
                 .SingleAsync(membership => membership.WorkspaceId == WorkOps.Domain.WorkspaceId.From(inactive.Id));
 
-            suspendedWorkspace.Suspend(DateTimeOffset.UtcNow);
             inactiveMembership.Deactivate(DateTimeOffset.UtcNow);
             workspaceContext.EstablishBackground(WorkOps.Domain.WorkspaceId.From(inactive.Id));
             await dbContext.SaveChangesAsync();

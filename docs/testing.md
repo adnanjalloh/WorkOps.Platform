@@ -2,13 +2,13 @@
 
 ## Current evidence
 
-The production-hardening milestone includes four test projects with 100 tests:
+The production-hardening milestone includes four test projects with 106 tests:
 
 - Unit: 53 tests for workspace identifiers, sanitization malicious corpus, role permissions, project archiving,
   work-item state transitions and updates, version-token conversion, background tenant context,
   message validation, outbox lifecycle, deterministic retry policy, processor outcomes, feature
   quotas, filename/media-type sanitization, and attachment size/type/signature validation.
-- Integration: 19 tests against real PostgreSQL migrations and default-deny query filters, including switching
+- Integration: 24 tests against real PostgreSQL migrations and default-deny query filters, including switching
   between two workspaces, a two-context optimistic-concurrency collision, concurrent outbox lease
   contention, durable publisher-confirmed routing through a real RabbitMQ container, tenant-aware
   cache isolation and invalidation through a real Redis container, concurrent quota reservations,
@@ -24,9 +24,9 @@ The production-hardening milestone includes four test projects with 100 tests:
   and cross-workspace attachment denial, correlation/trace response metadata, security headers,
   tested-log redaction, untrusted CORS denial, deterministic rate-limit responses, production HSTS
   and hidden OpenAPI, plus idempotent replay, changed-body denial, and scope isolation.
-- Architecture: 7 tests for dependency direction, request sanitization-policy coverage,
-  model-driven query-filter coverage for mapped tenant-owned entities, API persistence boundaries,
-  and public-contract isolation.
+- Architecture: 8 tests for dependency direction, request sanitization-policy coverage,
+  model-driven query-filter/write-resolver coverage, verification checkout policy, Docker-context
+  security patterns, API persistence boundaries, and public-contract isolation.
 
 These tests exercise the implemented identity, workspace, project, work-item, audit, outbox,
 RabbitMQ, Redis, feature-limit, file-storage, and idempotent development-notification flow. The
@@ -38,10 +38,11 @@ specific collector backend, reverse-proxy configuration, or production capacity.
 Local Bash and PowerShell demo runs reported the idempotent project replay, viewer `403`, stale
 `409`, outsider `404`, asynchronous audit/notification evidence, and a non-duplicating repeat path.
 The scheduled/manual `Full stack demo` workflow is configured to run the Bash scenario from a clean
-host and retain its sanitized log and JSON summary; hosted evidence remains pending the first push.
+host, screen its log for bearer/JWT/credential markers before displaying or uploading it, and retain
+synthetic log/JSON evidence only when that fail-closed gate passes. Hosted evidence remains pending.
 These scripts are reviewer tools, not substitutes for the automated suites.
 
-Local verification on 2026-08-02 reported 90.3% line coverage and 48.2% branch coverage, with all 100
+Local verification on 2026-08-02 reported 90.3% line coverage and 48.9% branch coverage, with all 106
 tests passing. Hosted GitHub Actions evidence is pending the private first push. CI merges collector
 output, publishes HTML/Cobertura/Markdown evidence, and requires at least 70% lines and 35% branches.
 These are regression floors rather than quality targets.

@@ -8,14 +8,16 @@ first release.
 
 ### Added
 
-- Exact, case-sensitive OIDC subject validation and storage with full-host boundary tests.
-- Save-time tenant ownership enforcement for request, background, and provisioning writes.
-- Model-driven query-filter coverage plus cross-workspace insert, update, delete, and mutation tests.
-- Scheduled/manual full-Compose golden-scenario verification with retained sanitized evidence.
+- Exact, case-sensitive, printable-ASCII OIDC subject validation and storage with full-host boundary tests.
+- Save-time tenant ownership enforcement for every filtered type, including the `Workspace` root.
+- Model-driven query-filter/write-resolver coverage plus cross-workspace root and child write tests.
+- Scheduled/manual full-Compose golden-scenario verification with fail-closed evidence screening.
 - Exact business-constraint race mapping and atomic identity/workspace provisioning.
 - Corrupt-cache recovery and attachment storage integrity/reconciliation handling.
 - Trusted-proxy forwarding, release-derived telemetry versions, and explicit OTLP transport policy.
-- Safe operator exception diagnostics for outbox and notification workers.
+- Sanitized outbox publish-failure diagnostics plus restricted worker exception diagnostics.
+- Verification workflows with non-persisted checkout credentials and a regression test.
+- Security-sensitive `.gitignore`/`.dockerignore` policy alignment.
 - Bounded idempotency-record retention with cross-tenant maintenance isolation and metrics.
 - Clean-room .NET 10 modular-monolith foundation.
 - Health endpoints and initial functional test.

@@ -18,8 +18,9 @@ transitions, and the outbox failure state.
 | `WorkOps.Api` | HTTP adapter and composition root | All projects |
 
 Architecture tests enforce that Domain has no project dependency, Application cannot reference API,
-Contracts, or Infrastructure, tenant-owned entities declare their ownership boundary, and every
-request string has a sanitization policy or an explicit skip reason.
+Contracts, or Infrastructure, every tenant-filtered EF type has a typed write-boundary resolver,
+verification checkouts disable persisted credentials, and every request string has a sanitization
+policy or an explicit skip reason.
 
 ## Current and planned runtime containers
 

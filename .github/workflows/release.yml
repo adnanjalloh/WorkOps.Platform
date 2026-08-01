@@ -76,7 +76,7 @@ jobs:
       - name: Enforce coverage
         run: scripts/check-coverage.sh artifacts/coverage/Cobertura.xml 70 35
 
-      - name: Audit NuGet dependencies
+      - name: Report NuGet vulnerabilities
         run: dotnet list package --vulnerable --include-transitive
 
       - name: Validate local Compose boundary

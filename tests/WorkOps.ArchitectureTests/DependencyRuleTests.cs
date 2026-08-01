@@ -1,6 +1,8 @@
 using System.Reflection;
 using WorkOps.Contracts.Common;
+using WorkOps.Domain;
 using WorkOps.Domain.Common;
+using WorkOps.Domain.Tenancy;
 using WorkOps.Infrastructure.Persistence;
 
 namespace WorkOps.ArchitectureTests;
@@ -44,21 +46,44 @@ public sealed class DependencyRuleTests
     }
 
     [TestMethod]
-    public void Every_mapped_tenant_owned_entity_has_a_query_filter()
+    public void Every_tenant_filtered_entity_has_write_boundary_metadata()
     {
         using var dbContext = new WorkOpsDbContextFactory().CreateDbContext([]);
-        var tenantOwnedEntityTypes = dbContext.Model
+        var tenantScopedEntityTypes = dbContext.Model
             .GetEntityTypes()
-            .Where(static entityType => typeof(IWorkspaceOwned).IsAssignableFrom(entityType.ClrType))
+            .Where(static entityType =>
+                entityType.GetDeclaredQueryFilters().Count > 0 ||
+                entityType.ClrType == typeof(Workspace) ||
+                typeof(IWorkspaceOwned).IsAssignableFrom(entityType.ClrType))
             .ToArray();
-        var missingFilters = tenantOwnedEntityTypes
+        var missingFilters = tenantScopedEntityTypes
             .Where(static entityType => entityType.GetDeclaredQueryFilters().Count == 0)
             .Select(static entityType => entityType.ClrType.FullName!)
             .Order(StringComparer.Ordinal)
             .ToArray();
+        var missingResolvers = tenantScopedEntityTypes
+            .Where(static entityType =>
+                entityType.FindAnnotation(WorkOpsDbContext.TenantIdPropertyAnnotation)?.Value is not string propertyName ||
+                entityType.FindProperty(propertyName)?.ClrType != typeof(WorkspaceId))
+            .Select(static entityType => entityType.ClrType.FullName!)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        var unfilteredResolvers = dbContext.Model
+            .GetEntityTypes()
+            .Where(static entityType =>
+                entityType.FindAnnotation(WorkOpsDbContext.TenantIdPropertyAnnotation) is not null &&
+                entityType.GetDeclaredQueryFilters().Count == 0)
+            .Select(static entityType => entityType.ClrType.FullName!)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
 
-        Assert.IsNotEmpty(tenantOwnedEntityTypes);
+        Assert.IsNotEmpty(tenantScopedEntityTypes);
+        CollectionAssert.Contains(
+            tenantScopedEntityTypes.Select(static entityType => entityType.ClrType).ToArray(),
+            typeof(Workspace));
         CollectionAssert.AreEqual(Array.Empty<string>(), missingFilters);
+        CollectionAssert.AreEqual(Array.Empty<string>(), missingResolvers);
+        CollectionAssert.AreEqual(Array.Empty<string>(), unfilteredResolvers);
     }
 
     [TestMethod]
@@ -94,41 +119,77 @@ public sealed class DependencyRuleTests
     }
 
     [TestMethod]
-    public void Docker_context_excludes_sensitive_local_artifacts()
+    public void Docker_context_preserves_security_sensitive_gitignore_rules()
     {
         var repositoryRoot = FindRepositoryRoot();
+        var gitIgnore = File.ReadAllLines(Path.Combine(repositoryRoot, ".gitignore"))
+            .Select(static line => line.Trim())
+            .Where(static line => line.Length > 0 && !line.StartsWith('#') && !line.StartsWith('!'))
+            .Select(static line => line.TrimEnd('/'))
+            .Where(IsSecuritySensitiveIgnorePattern)
+            .ToArray();
         var dockerIgnore = File.ReadAllLines(Path.Combine(repositoryRoot, ".dockerignore"))
+            .Select(static line => line.Trim())
+            .Where(static line => line.Length > 0 && !line.StartsWith('#'))
             .Select(static line => line.TrimEnd('/'))
             .ToHashSet(StringComparer.Ordinal);
-        var requiredPatterns = new[]
-        {
-            ".env",
-            ".env.*",
-            "**/secrets.json",
-            "*.pem",
-            "*.key",
-            "*.pfx",
-            "*.p12",
-            "*.jks",
-            ".terraform",
-            "*.tfstate",
-            "*.tfstate.*",
-            "*.tfplan",
-            "terraform.tfvars",
-            "terraform.tfvars.json",
-            "crash.log",
-            ".local",
-            ".vs",
-            ".idea",
-            "*.log",
-            "logs",
-            "artifacts",
-        };
-        var missingPatterns = requiredPatterns
+        var missingPatterns = gitIgnore
             .Where(pattern => !dockerIgnore.Contains(pattern))
             .ToArray();
 
+        CollectionAssert.Contains(gitIgnore, "**/appsettings.*.local.json");
         CollectionAssert.AreEqual(Array.Empty<string>(), missingPatterns);
+    }
+
+    [TestMethod]
+    public void Verification_workflows_disable_persisted_checkout_credentials()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var offenders = Directory
+            .GetFiles(Path.Combine(repositoryRoot, ".github", "workflows"), "*.yml")
+            .SelectMany(file => FindCheckoutCredentialOffenders(repositoryRoot, file))
+            .ToArray();
+
+        CollectionAssert.AreEqual(Array.Empty<string>(), offenders);
+    }
+
+    private static bool IsSecuritySensitiveIgnorePattern(string pattern) =>
+        pattern.Contains(".env", StringComparison.Ordinal) ||
+        pattern.Contains("appsettings", StringComparison.OrdinalIgnoreCase) ||
+        pattern.Contains("secret", StringComparison.OrdinalIgnoreCase) ||
+        pattern.Contains("terraform", StringComparison.OrdinalIgnoreCase) ||
+        pattern.Contains("tfstate", StringComparison.OrdinalIgnoreCase) ||
+        pattern.Contains("tfplan", StringComparison.OrdinalIgnoreCase) ||
+        pattern.Contains(".local", StringComparison.Ordinal) ||
+        pattern is "*.pem" or "*.key" or "*.pfx" or "*.p12" or "*.jks" or "crash.log";
+
+    private static IEnumerable<string> FindCheckoutCredentialOffenders(
+        string repositoryRoot,
+        string workflowFile)
+    {
+        var lines = File.ReadAllLines(workflowFile);
+        for (var index = 0; index < lines.Length; index++)
+        {
+            if (!lines[index].Contains("uses: actions/checkout@", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var stepEnd = Array.FindIndex(
+                lines,
+                index + 1,
+                static line => line.StartsWith("      - name:", StringComparison.Ordinal));
+            if (stepEnd < 0)
+            {
+                stepEnd = lines.Length;
+            }
+
+            if (!lines[index..stepEnd].Any(
+                    static line => line.Trim() == "persist-credentials: false"))
+            {
+                yield return $"{Path.GetRelativePath(repositoryRoot, workflowFile)}:{index + 1}";
+            }
+        }
     }
 
     private static string[] ReferencedWorkOpsAssemblies(Assembly assembly) =>

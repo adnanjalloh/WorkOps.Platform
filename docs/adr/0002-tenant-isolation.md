@@ -19,11 +19,12 @@ an active membership. Suspended workspaces return `403`; absent, inactive, and f
 return the same non-disclosing `404`.
 
 Normal Entity Framework reads use global query filters over a nullable request-scoped workspace key.
-No context means no workspace or tenant-owned rows are visible. Before saving, the database context
-rejects every added, modified, or deleted `IWorkspaceOwned` entity unless its current and original
-workspace match an established request or background context. New-workspace setup uses a disposable
-provisioning scope limited to the generated workspace ID. Application stores do not expose an
-unfiltered query surface. Role permissions are centralized and enforced by endpoint policies.
+No context means no workspace or tenant-owned rows are visible. Each filtered EF type carries a
+tenant-ID property annotation: `Workspace.Id` for the root and `WorkspaceId` for child entities.
+Before saving, the database context resolves that metadata for every added, modified, or deleted
+entry and checks current/original ownership. Root creation succeeds only in a disposable
+provisioning scope for the generated ID; later root writes require a matching request/background
+context. Application stores do not expose an unfiltered query surface.
 
 All new request strings require a named sanitization profile or a documented skip reason. Tests use
 real PostgreSQL to apply migrations and exercise the no-context and cross-workspace cases. Functional
@@ -32,7 +33,7 @@ tests exercise the complete JWT, middleware, authorization, and persistence path
 ## Consequences
 
 - Missing context fails closed without relying on each query author.
-- Tenant-owned writes fail closed on missing context, cross-workspace changes, and ownership mutation.
+- Tenant-root and child writes fail closed on missing context, cross-workspace changes, and ID mutation.
 - Membership resolution remains reviewable because filter bypass is isolated to one adapter.
 - Background workers will need an explicit, validated workspace scope before tenant-owned access.
 - Bulk operations and future administrative tooling cannot reuse tenant stores to bypass isolation.

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using WorkOps.Application.Abstractions;
 
 namespace WorkOps.Application.Messaging;
@@ -5,8 +6,15 @@ namespace WorkOps.Application.Messaging;
 public sealed class OutboxProcessor(
     IOutboxStore outboxStore,
     IMessagePublisher publisher,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    ILogger<OutboxProcessor> logger)
 {
+    private static readonly Action<ILogger, Guid, string, string, string, Exception?> LogPublishFailure =
+        LoggerMessage.Define<Guid, string, string, string>(
+            LogLevel.Warning,
+            new EventId(2004, "OutboxPublishFailed"),
+            "Outbox message {MessageId} of type {MessageType} produced {Result} after {FailureCategory}");
+
     public async Task<OutboxProcessResult> ProcessNextAsync(CancellationToken cancellationToken)
     {
         var now = timeProvider.GetUtcNow();
@@ -32,10 +40,26 @@ public sealed class OutboxProcessor(
         {
             throw;
         }
-        catch (Exception)
+        catch (Exception exception)
         {
             var failedAt = timeProvider.GetUtcNow();
             var delay = OutboxRetryPolicy.GetDelay(message.Id, message.AttemptCount);
+            var result = message.AttemptCount >= OutboxRetryPolicy.MaximumAttempts
+                ? OutboxProcessResult.Failed
+                : OutboxProcessResult.RetryScheduled;
+            var safeMessageType = string.Equals(
+                message.Type,
+                WorkItemStatusChangedMessage.MessageType,
+                StringComparison.Ordinal)
+                ? WorkItemStatusChangedMessage.MessageType
+                : "unknown";
+            LogPublishFailure(
+                logger,
+                message.Id,
+                safeMessageType,
+                result.ToString(),
+                ClassifyFailure(exception),
+                null);
             await outboxStore.MarkPublishFailureAsync(
                 message.Id,
                 failedAt,
@@ -43,9 +67,14 @@ public sealed class OutboxProcessor(
                 OutboxRetryPolicy.MaximumAttempts,
                 "transport_publish_failed",
                 cancellationToken);
-            return message.AttemptCount >= OutboxRetryPolicy.MaximumAttempts
-                ? OutboxProcessResult.Failed
-                : OutboxProcessResult.RetryScheduled;
+            return result;
         }
     }
+
+    private static string ClassifyFailure(Exception exception) => exception switch
+    {
+        TimeoutException => "timeout",
+        InvalidOperationException => "invalid_operation",
+        _ => "transport_error",
+    };
 }

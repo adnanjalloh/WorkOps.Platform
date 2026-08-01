@@ -12,7 +12,7 @@ secure file handling, OpenTelemetry observability, and GitHub Actions delivery.
 ## Status
 
 **Portfolio release candidate - not a production deployment.** Local verification on 2026-08-02
-completed with a zero-warning Release build, 100 passing tests, 90.3% line coverage, and 48.2% branch
+completed with a zero-warning Release build, 106 passing tests, 90.3% line coverage, and 48.9% branch
 coverage. Hosted GitHub Actions verification is pending the private first push; CI enforces floors
 of 70% and 35%. There is no hosted demo, and no public release is claimed.
 
@@ -63,9 +63,10 @@ flowchart LR
 ```
 
 The five production projects keep HTTP contracts, use cases, invariants, and adapters separate.
-Architecture tests enforce dependency direction, model-driven tenant filter coverage, public
-contract isolation, and sanitization coverage. Persistence also rejects tenant-owned writes that
-do not match an explicit request, background, or provisioning context. See
+Architecture tests enforce dependency direction, model-driven tenant filter/write-resolver coverage,
+public contract isolation, workflow checkout policy, and sanitization coverage. Persistence rejects
+writes to every tenant-filtered type—including the `Workspace` root—unless its metadata-resolved
+tenant ID matches an explicit request, background, or narrowly scoped provisioning context. See
 [architecture](docs/architecture.md).
 
 ## Golden scenario
@@ -113,7 +114,7 @@ The live script also checks that a viewer receives `403`, an exact project repla
 
 ## Security highlights
 
-- strict JWT issuer, audience, signature, lifetime, algorithm, and subject validation;
+- strict JWT issuer, audience, signature, lifetime, algorithm, and storage-safe subject validation;
 - active-membership workspace resolution and non-disclosing cross-workspace denial;
 - explicit request contracts, named sanitization profiles, body/header/page bounds, and safe Problem
   Details with generated correlation and trace IDs;
@@ -163,7 +164,8 @@ dotnet run --project src/WorkOps.Api
 ## Demo
 
 
-The script obtains local synthetic tokens without displaying them, creates two workspaces, assigns
+The script obtains local synthetic tokens without intentionally displaying or persisting them,
+creates two workspaces, assigns
 contributor and viewer roles, replays an idempotent project request, executes the work-item flow,
 checks `403`, `409`, and `404` boundaries, and waits for audit/outbox notification evidence.
 
@@ -181,11 +183,11 @@ dotnet build -c Release --no-restore
 dotnet test -c Release --no-build --logger "trx" --collect:"XPlat Code Coverage"
 ```
 
-The 100 tests comprise 53 unit, 19 PostgreSQL/Redis/RabbitMQ/storage integration, 21 full-host
-functional, and 7 architecture tests. The dated local result is 90.3% line and 48.2% branch
+The 106 tests comprise 53 unit, 24 PostgreSQL/Redis/RabbitMQ/storage integration, 21 full-host
+functional, and 8 architecture tests. The dated local result is 90.3% line and 48.9% branch
 coverage. CI merges coverage, publishes HTML/Cobertura/Markdown evidence, and enforces the 70% line
-/ 35% branch floors. A scheduled/manual workflow runs the complete Compose golden scenario and
-retains sanitized evidence. See [testing](docs/testing.md).
+/ 35% branch floors. A scheduled/manual workflow runs the complete Compose golden scenario, screens
+its synthetic evidence for credential-like content, and blocks unsafe output. See [testing](docs/testing.md).
 
 ## Observability and operations
 

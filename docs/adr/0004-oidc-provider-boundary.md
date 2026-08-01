@@ -17,6 +17,11 @@ authentication. The provider subject maps to an application user; workspace memb
 permissions are always loaded from application persistence rather than trusted from arbitrary token
 role or tenant claims.
 
+The storage-compatible subject profile requires exactly one value containing 1–255 printable ASCII
+characters (`U+0020` through `U+007E`). Case and leading/trailing spaces are preserved exactly;
+values are never trimmed, normalized, or lowercased. NUL, C0 controls, DEL, and non-ASCII values are
+rejected during bearer authentication and by invitation input validation.
+
 Compose uses a synthetic Keycloak realm for local development only. The application depends on OIDC
 metadata and JWT standards, not Keycloak-specific administration APIs. HTTPS metadata is mandatory
 outside Development and Testing. Test tokens use a deterministic test-only key through a replaced
@@ -34,5 +39,6 @@ configuration manager and never create a production authentication shortcut.
 
 ## Evidence
 
-Functional tests cover missing and wrong-audience tokens, required subject mapping, inactive
-membership, suspended workspaces, role permissions, and non-disclosing cross-workspace denial.
+Functional tests cover missing and wrong-audience tokens, missing/duplicate/empty/overlength/control-
+character subjects, exact supported-value preservation, invitation validation, inactive membership,
+suspended workspaces, role permissions, and non-disclosing cross-workspace denial.

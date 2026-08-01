@@ -20,13 +20,16 @@ fi
 result_file="$(mktemp)"
 trap 'rm -f "$result_file"' EXIT
 
+curl_with_token() {
+  printf 'header = "Authorization: Bearer %s"\n' "$access_token" | curl --config - "$@"
+}
+
 for ((request = 1; request <= request_count; request++)); do
-  curl \
+  curl_with_token \
     --silent \
     --show-error \
     --output /dev/null \
     --write-out '%{http_code} %{time_total}\n' \
-    --header "Authorization: Bearer $access_token" \
     --header "X-Workspace-Id: $workspace_id" \
     "$base_url/api/v1/features" >>"$result_file"
 done

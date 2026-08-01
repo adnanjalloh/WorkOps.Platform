@@ -31,6 +31,17 @@ require_command() {
   command -v "$1" >/dev/null 2>&1 || fail "Required command not found: $1"
 }
 
+curl_with_token() {
+  local token=$1
+  shift
+  if [[ -n "$token" ]]; then
+    printf 'header = "Authorization: Bearer %s"\n' "$token" | curl --config - "$@"
+    return
+  fi
+
+  curl "$@"
+}
+
 http_json() {
   local method=$1
   local path=$2
@@ -49,14 +60,13 @@ http_json() {
     --write-out '%{http_code}'
   )
 
-  [[ -n "$token" ]] && args+=(--header "Authorization: Bearer $token")
   [[ -n "$workspace_id" ]] && args+=(--header "X-Workspace-Id: $workspace_id")
   [[ -n "$idempotency_key" ]] && args+=(--header "Idempotency-Key: $idempotency_key")
   if [[ -n "$payload" ]]; then
     args+=(--header 'Content-Type: application/json' --data "$payload")
   fi
 
-  HTTP_STATUS=$(curl "${args[@]}" "$api_url$path")
+  HTTP_STATUS=$(curl_with_token "$token" "${args[@]}" "$api_url$path")
   HTTP_BODY=$(<"$body_file")
   HTTP_HEADERS=$(<"$header_file")
 }
@@ -95,8 +105,7 @@ token_for() {
 
 subject_for() {
   local token=$1
-  curl --silent --show-error --fail-with-body \
-    --header "Authorization: Bearer $token" \
+  curl_with_token "$token" --silent --show-error --fail-with-body \
     "$identity_url/realms/workops/protocol/openid-connect/userinfo" | jq -er '.sub'
 }
 
@@ -124,7 +133,7 @@ show_summary() {
   printf '  Project:   %s\n' "$project_id"
   printf '  Work item: %s\n' "$work_item_id"
   printf '  Evidence:  authorization, tenant isolation, concurrency, audit, outbox notification\n'
-  printf '  Tokens:    held in memory only; never printed or written\n'
+  printf '  Tokens:    not intentionally printed or persisted by this script\n'
 }
 
 require_command curl
@@ -222,7 +231,7 @@ expect_status 201 "project replay"
 grep -qi '^Idempotency-Replayed: true' <<< "$HTTP_HEADERS" || fail "Project replay header was not returned"
 pass "exact replay returned the original project"
 
-step "Proving viewer write denial"
+step "Checking viewer write denial"
 viewer_project_payload=$(jq -cn --arg name "Forbidden Project" --arg key "forbidden-$run_id" \
   '{name:$name,key:$key}')
 http_json POST /api/v1/projects/ "$viewer_token" "$workspace_id" "$viewer_project_payload"
@@ -255,7 +264,7 @@ expect_status 200 "work-item transition"
 current_version=$(jq -er '.version' <<< "$HTTP_BODY")
 pass "work item moved from Backlog to InProgress"
 
-step "Proving stale-write and tenant boundaries"
+step "Checking stale-write and tenant boundaries"
 stale_payload=$(jq -cn --arg status Blocked --arg version "$updated_version" \
   '{targetStatus:$status,expectedVersion:$version}')
 http_json POST "/api/v1/work-items/$work_item_id/transitions" \

@@ -4,6 +4,7 @@
 Dockerfile
 .env
 .env.*
+**/appsettings.*.local.json
 **/bin
 **/obj
 **/TestResults

@@ -1,4 +1,6 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Npgsql;
 using WorkOps.Application.Abstractions;
 using WorkOps.Application.Common;
@@ -25,6 +27,8 @@ public sealed class WorkOpsDbContext(
     DbContextOptions<WorkOpsDbContext> options,
     IWorkspaceContextAccessor workspaceContext) : DbContext(options), IUnitOfWork
 {
+    public const string TenantIdPropertyAnnotation = "WorkOps:TenantIdProperty";
+
     public DbSet<ApplicationUser> Users => Set<ApplicationUser>();
 
     public DbSet<Workspace> Workspaces => Set<Workspace>();
@@ -53,49 +57,61 @@ public sealed class WorkOpsDbContext(
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(WorkOpsDbContext).Assembly);
 
-        modelBuilder.Entity<Workspace>().HasQueryFilter(
+        ConfigureTenantBoundary(
+            modelBuilder.Entity<Workspace>(),
             workspace => workspaceContext.CurrentWorkspaceId.HasValue &&
-                         workspace.Id == workspaceContext.CurrentWorkspaceId.GetValueOrDefault());
-
-        modelBuilder.Entity<WorkspaceMembership>().HasQueryFilter(
+                         workspace.Id == workspaceContext.CurrentWorkspaceId.GetValueOrDefault(),
+            nameof(Workspace.Id));
+        ConfigureTenantBoundary(
+            modelBuilder.Entity<WorkspaceMembership>(),
             membership => workspaceContext.CurrentWorkspaceId.HasValue &&
-                          membership.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault());
-
-        modelBuilder.Entity<Project>().HasQueryFilter(
+                          membership.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault(),
+            nameof(IWorkspaceOwned.WorkspaceId));
+        ConfigureTenantBoundary(
+            modelBuilder.Entity<Project>(),
             project => workspaceContext.CurrentWorkspaceId.HasValue &&
-                       project.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault());
-
-        modelBuilder.Entity<WorkItem>().HasQueryFilter(
+                       project.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault(),
+            nameof(IWorkspaceOwned.WorkspaceId));
+        ConfigureTenantBoundary(
+            modelBuilder.Entity<WorkItem>(),
             workItem => workspaceContext.CurrentWorkspaceId.HasValue &&
-                       workItem.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault());
-
-        modelBuilder.Entity<AuditEvent>().HasQueryFilter(
+                        workItem.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault(),
+            nameof(IWorkspaceOwned.WorkspaceId));
+        ConfigureTenantBoundary(
+            modelBuilder.Entity<AuditEvent>(),
             auditEvent => workspaceContext.CurrentWorkspaceId.HasValue &&
-                          auditEvent.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault());
-
-        modelBuilder.Entity<OutboxMessage>().HasQueryFilter(
+                          auditEvent.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault(),
+            nameof(IWorkspaceOwned.WorkspaceId));
+        ConfigureTenantBoundary(
+            modelBuilder.Entity<OutboxMessage>(),
             message => workspaceContext.CurrentWorkspaceId.HasValue &&
-                       message.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault());
-
-        modelBuilder.Entity<InboxMessage>().HasQueryFilter(
+                       message.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault(),
+            nameof(IWorkspaceOwned.WorkspaceId));
+        ConfigureTenantBoundary(
+            modelBuilder.Entity<InboxMessage>(),
             message => workspaceContext.CurrentWorkspaceId.HasValue &&
-                       message.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault());
-
-        modelBuilder.Entity<NotificationDelivery>().HasQueryFilter(
+                       message.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault(),
+            nameof(IWorkspaceOwned.WorkspaceId));
+        ConfigureTenantBoundary(
+            modelBuilder.Entity<NotificationDelivery>(),
             delivery => workspaceContext.CurrentWorkspaceId.HasValue &&
-                        delivery.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault());
-
-        modelBuilder.Entity<WorkspaceSubscription>().HasQueryFilter(
+                        delivery.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault(),
+            nameof(IWorkspaceOwned.WorkspaceId));
+        ConfigureTenantBoundary(
+            modelBuilder.Entity<WorkspaceSubscription>(),
             subscription => workspaceContext.CurrentWorkspaceId.HasValue &&
-                            subscription.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault());
-
-        modelBuilder.Entity<Attachment>().HasQueryFilter(
+                            subscription.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault(),
+            nameof(IWorkspaceOwned.WorkspaceId));
+        ConfigureTenantBoundary(
+            modelBuilder.Entity<Attachment>(),
             attachment => workspaceContext.CurrentWorkspaceId.HasValue &&
-                          attachment.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault());
-
-        modelBuilder.Entity<IdempotencyRecord>().HasQueryFilter(
+                          attachment.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault(),
+            nameof(IWorkspaceOwned.WorkspaceId));
+        ConfigureTenantBoundary(
+            modelBuilder.Entity<IdempotencyRecord>(),
             record => workspaceContext.CurrentWorkspaceId.HasValue &&
-                      record.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault());
+                      record.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault(),
+            nameof(IWorkspaceOwned.WorkspaceId));
     }
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
@@ -168,8 +184,8 @@ public sealed class WorkOpsDbContext(
     {
         var pendingEntries = ChangeTracker.Entries()
             .Where(static entry =>
-                entry.Entity is IWorkspaceOwned &&
-                entry.State is EntityState.Added or EntityState.Modified or EntityState.Deleted)
+                (entry.State is EntityState.Added or EntityState.Modified or EntityState.Deleted) &&
+                entry.Metadata.FindAnnotation(TenantIdPropertyAnnotation)?.Value is string)
             .ToArray();
 
         if (pendingEntries.Length == 0)
@@ -177,27 +193,51 @@ public sealed class WorkOpsDbContext(
             return;
         }
 
-        var allowedWorkspaceId = workspaceContext.CurrentWorkspaceId ??
-                                 workspaceContext.ProvisioningWorkspaceId;
-        if (!allowedWorkspaceId.HasValue)
-        {
-            throw new TenantWriteBoundaryException();
-        }
-
         foreach (var entry in pendingEntries)
         {
-            var entity = (IWorkspaceOwned)entry.Entity;
-            var workspaceProperty = entry.Property(nameof(IWorkspaceOwned.WorkspaceId));
+            var tenantIdPropertyName = (string)entry.Metadata
+                .FindAnnotation(TenantIdPropertyAnnotation)!
+                .Value!;
+            var tenantIdProperty = entry.Property(tenantIdPropertyName);
+            if (tenantIdProperty.CurrentValue is not WorkspaceId currentTenantId)
+            {
+                throw new TenantWriteBoundaryException();
+            }
 
-            if (entity.WorkspaceId != allowedWorkspaceId.Value ||
+            var isWorkspaceRoot = entry.Metadata.ClrType == typeof(Workspace);
+            if (isWorkspaceRoot && entry.State == EntityState.Added)
+            {
+                if (workspaceContext.CurrentWorkspaceId.HasValue ||
+                    workspaceContext.ProvisioningWorkspaceId != currentTenantId)
+                {
+                    throw new TenantWriteBoundaryException();
+                }
+
+                continue;
+            }
+
+            var allowedWorkspaceId = isWorkspaceRoot
+                ? workspaceContext.CurrentWorkspaceId
+                : workspaceContext.CurrentWorkspaceId ?? workspaceContext.ProvisioningWorkspaceId;
+            if (allowedWorkspaceId != currentTenantId ||
                 entry.State is not EntityState.Added &&
-                (workspaceProperty.IsModified ||
-                 workspaceProperty.OriginalValue is not WorkspaceId originalWorkspaceId ||
-                 originalWorkspaceId != allowedWorkspaceId.Value))
+                (tenantIdProperty.IsModified ||
+                 tenantIdProperty.OriginalValue is not WorkspaceId originalTenantId ||
+                 originalTenantId != currentTenantId))
             {
                 throw new TenantWriteBoundaryException();
             }
         }
+    }
+
+    private static void ConfigureTenantBoundary<TEntity>(
+        EntityTypeBuilder<TEntity> builder,
+        Expression<Func<TEntity, bool>> queryFilter,
+        string tenantIdPropertyName)
+        where TEntity : class
+    {
+        builder.HasQueryFilter(queryFilter);
+        builder.Metadata.SetAnnotation(TenantIdPropertyAnnotation, tenantIdPropertyName);
     }
 
     private static Exception? MapKnownConstraint(DbUpdateException exception)

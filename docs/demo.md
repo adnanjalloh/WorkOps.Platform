@@ -15,8 +15,10 @@ Docker Compose. It uses only synthetic local users and data, and checks:
 8. cross-workspace lookup denial as a non-disclosing `404`;
 9. visible safe transition audit and outbox-delivered notification.
 
-Tokens are not intentionally printed or persisted by the scripts. The saved state contains only
-synthetic resource IDs and opaque versions.
+Tokens are not intentionally printed or persisted by the scripts. Bash passes bearer headers to
+`curl` through standard-input configuration rather than child-process arguments. The saved state
+contains only synthetic resource IDs and opaque versions. The hosted workflow screens evidence for
+credential-like markers and replaces unsafe output with a blocked notice before upload.
 
 ## Run it
 

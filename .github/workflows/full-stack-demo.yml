@@ -33,9 +33,16 @@ jobs:
         run: |
           mkdir -p artifacts/full-stack-demo
           set +e
-          ./scripts/demo.sh --start 2>&1 | tee artifacts/full-stack-demo/demo.log
-          exit_code=${PIPESTATUS[0]}
+          ./scripts/demo.sh --start > artifacts/full-stack-demo/demo.log 2>&1
+          exit_code=$?
           set -e
+
+          evidence_status=screened
+          if ! scripts/check-demo-evidence.sh artifacts/full-stack-demo/demo.log; then
+            evidence_status=blocked
+            exit_code=1
+          fi
+          cat artifacts/full-stack-demo/demo.log
 
           if [[ "$exit_code" -eq 0 ]]; then
             status=passed
@@ -46,12 +53,13 @@ jobs:
           jq -n \
             --arg status "$status" \
             --arg commit "$GITHUB_SHA" \
+            --arg evidenceStatus "$evidence_status" \
             --arg completedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            '{status: $status, commit: $commit, completedAt: $completedAt, scenario: "compose-golden-flow"}' \
+            '{status: $status, commit: $commit, evidenceStatus: $evidenceStatus, completedAt: $completedAt, scenario: "compose-golden-flow"}' \
             > artifacts/full-stack-demo/summary.json
           exit "$exit_code"
 
-      - name: Upload sanitized scenario evidence
+      - name: Upload screened synthetic scenario evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

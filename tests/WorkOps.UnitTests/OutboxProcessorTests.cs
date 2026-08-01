@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using WorkOps.Application.Abstractions;
 using WorkOps.Application.Messaging;
 using WorkOps.Domain;
@@ -13,7 +14,11 @@ public sealed class OutboxProcessorTests
     {
         var now = new DateTimeOffset(2026, 8, 1, 12, 0, 0, TimeSpan.Zero);
         var store = new RecordingOutboxStore(CreateLease(attemptCount: 1));
-        var processor = new OutboxProcessor(store, new SuccessfulPublisher(), new FixedTimeProvider(now));
+        var processor = new OutboxProcessor(
+            store,
+            new SuccessfulPublisher(),
+            new FixedTimeProvider(now),
+            new RecordingLogger<OutboxProcessor>());
 
         var result = await processor.ProcessNextAsync(CancellationToken.None);
 
@@ -26,9 +31,18 @@ public sealed class OutboxProcessorTests
     public async Task Publish_failure_records_only_a_safe_error_code_and_schedules_retry()
     {
         var now = new DateTimeOffset(2026, 8, 1, 12, 0, 0, TimeSpan.Zero);
-        var lease = CreateLease(attemptCount: 2);
+        const string sentinel = "TOKEN=secret-token;CONNECTION=secret-connection";
+        var lease = CreateLease(
+            attemptCount: 2,
+            type: sentinel,
+            payloadJson: $"{{\"payload\":\"{sentinel}\"}}");
         var store = new RecordingOutboxStore(lease);
-        var processor = new OutboxProcessor(store, new FailingPublisher(), new FixedTimeProvider(now));
+        var logger = new RecordingLogger<OutboxProcessor>();
+        var processor = new OutboxProcessor(
+            store,
+            new FailingPublisher(sentinel),
+            new FixedTimeProvider(now),
+            logger);
 
         var result = await processor.ProcessNextAsync(CancellationToken.None);
 
@@ -36,6 +50,13 @@ public sealed class OutboxProcessorTests
         Assert.IsTrue(store.PublishFailed);
         Assert.AreEqual("transport_publish_failed", store.ErrorCode);
         Assert.IsGreaterThan(now, store.NextAttemptAt);
+        Assert.HasCount(1, logger.Messages);
+        StringAssert.Contains(logger.Messages[0], lease.Id.ToString());
+        StringAssert.Contains(logger.Messages[0], "unknown");
+        StringAssert.Contains(logger.Messages[0], OutboxProcessResult.RetryScheduled.ToString());
+        StringAssert.Contains(logger.Messages[0], "invalid_operation");
+        Assert.IsFalse(logger.Messages[0].Contains(sentinel, StringComparison.Ordinal));
+        Assert.IsNull(logger.Exceptions[0]);
     }
 
     [TestMethod]
@@ -54,11 +75,14 @@ public sealed class OutboxProcessorTests
         Assert.IsLessThan(TimeSpan.FromSeconds(17), final);
     }
 
-    private static OutboxLease CreateLease(int attemptCount) => new(
+    private static OutboxLease CreateLease(
+        int attemptCount,
+        string type = WorkItemStatusChangedMessage.MessageType,
+        string payloadJson = "{}") => new(
         Guid.Parse("00112233-4455-6677-8899-aabbccddeeff"),
         WorkspaceId.New(),
-        WorkItemStatusChangedMessage.MessageType,
-        "{}",
+        type,
+        payloadJson,
         attemptCount,
         new DateTimeOffset(2026, 8, 1, 11, 0, 0, TimeSpan.Zero));
 
@@ -76,12 +100,37 @@ public sealed class OutboxProcessorTests
         }
     }
 
-    private sealed class FailingPublisher : IMessagePublisher
+    private sealed class FailingPublisher(string sentinel) : IMessagePublisher
     {
         public Task PublishAsync(OutboxLease message, CancellationToken cancellationToken)
         {
             _ = message;
-            return Task.FromException(new InvalidOperationException("Sensitive provider detail."));
+            return Task.FromException(new InvalidOperationException(sentinel));
+        }
+    }
+
+    private sealed class RecordingLogger<T> : ILogger<T>
+    {
+        public List<string> Messages { get; } = [];
+
+        public List<Exception?> Exceptions { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            _ = logLevel;
+            _ = eventId;
+            Messages.Add(formatter(state, exception));
+            Exceptions.Add(exception);
         }
     }
 

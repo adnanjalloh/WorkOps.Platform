@@ -70,9 +70,9 @@ public sealed class TenantQueryFilterTests
         await using (var seed = CreateDbContext(seedAccessor))
         {
             seed.Users.Add(user);
-            seed.Workspaces.AddRange(first, second);
             using (seedAccessor.BeginProvisioning(first.Id))
             {
+                seed.Workspaces.Add(first);
                 seed.WorkspaceSubscriptions.Add(WorkspaceSubscription.CreateStarter(first.Id, now));
                 seed.WorkspaceMemberships.Add(
                     WorkspaceMembership.Create(first.Id, user.Id, WorkspaceRole.Owner, now));
@@ -81,6 +81,7 @@ public sealed class TenantQueryFilterTests
 
             using (seedAccessor.BeginProvisioning(second.Id))
             {
+                seed.Workspaces.Add(second);
                 seed.WorkspaceSubscriptions.Add(WorkspaceSubscription.CreateStarter(second.Id, now));
                 seed.WorkspaceMemberships.Add(
                     WorkspaceMembership.Create(second.Id, user.Id, WorkspaceRole.Viewer, now));
@@ -303,7 +304,7 @@ public sealed class TenantQueryFilterTests
             var accessor = unrelatedScope.ServiceProvider.GetRequiredService<IWorkspaceContextAccessor>();
             accessor.EstablishBackground(workspace.Id);
             var dbContext = unrelatedScope.ServiceProvider.GetRequiredService<WorkOpsDbContext>();
-            dbContext.Workspaces.Add(Workspace.Create("Duplicate Slug", workspace.Slug, now));
+            dbContext.Users.Add(ApplicationUser.Create(user.Subject, "Duplicate Subject", now));
             var store = unrelatedScope.ServiceProvider.GetRequiredService<INotificationStore>();
             var secondMessage = CreateNotificationMessage(
                 secondMessageId,
@@ -311,7 +312,7 @@ public sealed class TenantQueryFilterTests
                 user.Id,
                 now);
 
-            await Assert.ThrowsExactlyAsync<DuplicateWorkspaceSlugException>(
+            await Assert.ThrowsExactlyAsync<DuplicateIdentitySubjectException>(
                 () => store.TryDeliverAsync(secondMessage, now, CancellationToken.None));
         }
     }
@@ -556,6 +557,115 @@ public sealed class TenantQueryFilterTests
     }
 
     [TestMethod]
+    public async Task Workspace_root_write_without_a_context_is_rejected()
+    {
+        var seeded = await SeedProjectAsync("root-no-context");
+        await using var context = CreateDbContext(new WorkspaceContextAccessor());
+        var workspace = await context.Workspaces
+            .IgnoreQueryFilters()
+            .SingleAsync(candidate => candidate.Id == seeded.Workspace.Id);
+        workspace.Suspend(DateTimeOffset.UtcNow);
+
+        await Assert.ThrowsExactlyAsync<TenantWriteBoundaryException>(
+            () => context.SaveChangesAsync());
+    }
+
+    [TestMethod]
+    public async Task Cross_workspace_root_update_and_delete_are_rejected()
+    {
+        var seeded = await SeedProjectAsync("root-cross-tenant");
+        var foreignWorkspaceId = WorkOps.Domain.WorkspaceId.New();
+
+        await using (var update = CreateDbContext(CreateAccessor(seeded.User.Id, foreignWorkspaceId)))
+        {
+            var workspace = await update.Workspaces
+                .IgnoreQueryFilters()
+                .SingleAsync(candidate => candidate.Id == seeded.Workspace.Id);
+            workspace.Suspend(DateTimeOffset.UtcNow);
+
+            await Assert.ThrowsExactlyAsync<TenantWriteBoundaryException>(
+                () => update.SaveChangesAsync());
+        }
+
+        await using (var delete = CreateDbContext(CreateAccessor(seeded.User.Id, foreignWorkspaceId)))
+        {
+            var workspace = await delete.Workspaces
+                .IgnoreQueryFilters()
+                .SingleAsync(candidate => candidate.Id == seeded.Workspace.Id);
+            delete.Workspaces.Remove(workspace);
+
+            await Assert.ThrowsExactlyAsync<TenantWriteBoundaryException>(
+                () => delete.SaveChangesAsync());
+        }
+    }
+
+    [TestMethod]
+    public async Task Attached_foreign_workspace_root_is_rejected()
+    {
+        var seeded = await SeedProjectAsync("root-attached");
+        await using var context = CreateDbContext(
+            CreateAccessor(seeded.User.Id, WorkOps.Domain.WorkspaceId.New()));
+        context.Attach(seeded.Workspace);
+        seeded.Workspace.Suspend(DateTimeOffset.UtcNow);
+
+        await Assert.ThrowsExactlyAsync<TenantWriteBoundaryException>(
+            () => context.SaveChangesAsync());
+    }
+
+    [TestMethod]
+    public async Task Workspace_root_identifier_mutation_fails_before_persistence()
+    {
+        var seeded = await SeedProjectAsync("root-id-mutation");
+        var replacementId = WorkOps.Domain.WorkspaceId.New();
+        await using (var context = CreateDbContext(
+                         CreateAccessor(seeded.User.Id, seeded.Workspace.Id)))
+        {
+            var workspace = await context.Workspaces.SingleAsync();
+            var idField = typeof(Workspace).GetField(
+                "<Id>k__BackingField",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            Assert.IsNotNull(idField);
+            idField.SetValue(workspace, replacementId);
+
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () => context.SaveChangesAsync());
+        }
+
+        await using var verify = CreateDbContext(new WorkspaceContextAccessor());
+        Assert.IsTrue(await verify.Workspaces
+            .IgnoreQueryFilters()
+            .AnyAsync(candidate => candidate.Id == seeded.Workspace.Id));
+        Assert.IsFalse(await verify.Workspaces
+            .IgnoreQueryFilters()
+            .AnyAsync(candidate => candidate.Id == replacementId));
+    }
+
+    [TestMethod]
+    public async Task Workspace_root_creation_requires_a_matching_provisioning_scope()
+    {
+        var workspace = Workspace.Create(
+            "Provisioning Boundary",
+            $"provisioning-boundary-{Guid.NewGuid():N}",
+            DateTimeOffset.UtcNow);
+        var accessor = new WorkspaceContextAccessor();
+        using (accessor.BeginProvisioning(WorkOps.Domain.WorkspaceId.New()))
+        await using (var rejected = CreateDbContext(accessor))
+        {
+            rejected.Workspaces.Add(workspace);
+            await Assert.ThrowsExactlyAsync<TenantWriteBoundaryException>(
+                () => rejected.SaveChangesAsync());
+        }
+
+        var acceptedAccessor = new WorkspaceContextAccessor();
+        using (acceptedAccessor.BeginProvisioning(workspace.Id))
+        await using (var accepted = CreateDbContext(acceptedAccessor))
+        {
+            accepted.Workspaces.Add(workspace);
+            await accepted.SaveChangesAsync();
+        }
+    }
+
+    [TestMethod]
     public async Task Interactive_and_background_writes_accept_the_matching_workspace()
     {
         var seeded = await SeedProjectAsync("valid-boundary");
@@ -741,9 +851,9 @@ public sealed class TenantQueryFilterTests
         await using (var seed = CreateDbContext(seedAccessor))
         {
             seed.Users.Add(user);
-            seed.Workspaces.AddRange(first, second);
             using (seedAccessor.BeginProvisioning(first.Id))
             {
+                seed.Workspaces.Add(first);
                 seed.WorkspaceMemberships.Add(
                     WorkspaceMembership.Create(first.Id, user.Id, WorkspaceRole.Owner, now));
                 seed.IdempotencyRecords.AddRange(
@@ -755,6 +865,7 @@ public sealed class TenantQueryFilterTests
 
             using (seedAccessor.BeginProvisioning(second.Id))
             {
+                seed.Workspaces.Add(second);
                 seed.WorkspaceMemberships.Add(
                     WorkspaceMembership.Create(second.Id, user.Id, WorkspaceRole.Owner, now));
                 seed.IdempotencyRecords.Add(
