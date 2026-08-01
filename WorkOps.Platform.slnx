@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/WorkOps.Api/WorkOps.Api.csproj" />
+    <Project Path="src/WorkOps.Application/WorkOps.Application.csproj" />
+    <Project Path="src/WorkOps.Contracts/WorkOps.Contracts.csproj" />
+    <Project Path="src/WorkOps.Domain/WorkOps.Domain.csproj" />
+    <Project Path="src/WorkOps.Infrastructure/WorkOps.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/WorkOps.ArchitectureTests/WorkOps.ArchitectureTests.csproj" />
+    <Project Path="tests/WorkOps.FunctionalTests/WorkOps.FunctionalTests.csproj" />
+    <Project Path="tests/WorkOps.IntegrationTests/WorkOps.IntegrationTests.csproj" />
+    <Project Path="tests/WorkOps.UnitTests/WorkOps.UnitTests.csproj" />
+  </Folder>
+</Solution>

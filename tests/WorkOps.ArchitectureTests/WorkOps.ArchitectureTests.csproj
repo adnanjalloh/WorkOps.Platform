@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="MSTest.TestAdapter" />
+    <PackageReference Include="MSTest.TestFramework" />
+    <PackageReference Include="coverlet.collector" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/WorkOps.Api/WorkOps.Api.csproj" />
+    <ProjectReference Include="../../src/WorkOps.Application/WorkOps.Application.csproj" />
+    <ProjectReference Include="../../src/WorkOps.Contracts/WorkOps.Contracts.csproj" />
+    <ProjectReference Include="../../src/WorkOps.Domain/WorkOps.Domain.csproj" />
+    <ProjectReference Include="../../src/WorkOps.Infrastructure/WorkOps.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../WorkOps.Application/WorkOps.Application.csproj" />
+    <ProjectReference Include="../WorkOps.Domain/WorkOps.Domain.csproj" />
+  </ItemGroup>
+</Project>

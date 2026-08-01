@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <UserSecretsId>workops-platform-local-development</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../WorkOps.Application/WorkOps.Application.csproj" />
+    <ProjectReference Include="../WorkOps.Contracts/WorkOps.Contracts.csproj" />
+    <ProjectReference Include="../WorkOps.Domain/WorkOps.Domain.csproj" />
+    <ProjectReference Include="../WorkOps.Infrastructure/WorkOps.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>
