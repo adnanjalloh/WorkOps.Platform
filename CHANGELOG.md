@@ -8,6 +8,9 @@ first release.
 
 ### Added
 
+- Exact, case-sensitive OIDC subject validation and storage with full-host boundary tests.
+- Save-time tenant ownership enforcement for request, background, and provisioning writes.
+- Model-driven query-filter coverage plus cross-workspace insert, update, delete, and mutation tests.
 - Clean-room .NET 10 modular-monolith foundation.
 - Health endpoints and initial functional test.
 - Unit, integration-smoke, functional, and architecture test projects.
@@ -47,11 +50,11 @@ first release.
 - High/critical container vulnerability scanning in continuous integration and release jobs.
 - Reduced container build context that excludes local build, test, and coverage artifacts.
 - Full-commit action pins updated to current maintained major versions.
-- Tag-gated releases that verify the source, publish semantic-version and commit-addressed GHCR
-  images, generate an SPDX JSON SBOM, and attach immutable digest evidence.
+- Tag-gated releases that verify and checksum the candidate in a read-only job, then publish version
+  and commit-addressed GHCR tags from a separate protected job with immutable digest evidence.
 - OWASP ASVS 5.0 area mapping and an explicit repository-settings hardening checklist.
 - Synthetic Keycloak demo identities with a CLI-to-API audience mapper and private-network
   backchannel discovery.
-- Verified Bash and PowerShell golden-scenario clients plus a named-request HTTP collection.
+- Runnable Bash and PowerShell golden-scenario clients plus a named-request HTTP collection.
 - StackExchange.Redis 3.1 with the current stable client improvements.
 - MIT license for the independently written portfolio source.

@@ -24,7 +24,7 @@ and deployment environment.
 
 | Abuse case | Status | Control and evidence |
 |---|---|---|
-| Cross-workspace object access | Implemented for workspace, project, work-item, audit, and notification APIs | Verified context, default-deny filters, composite ownership constraints, non-disclosing denial, PostgreSQL and functional tests |
+| Cross-workspace object access | Implemented for workspace, project, work-item, audit, and notification APIs | Validated context, default-deny filters, save-time write guard, composite ownership constraints, non-disclosing denial, PostgreSQL and functional tests |
 | Forged or malformed JWT | Implemented | Strict validation, provider boundary, missing-token and wrong-audience tests |
 | Stolen valid JWT | Partial | Short lifetime is validated; revocation and deployed-provider operations remain external concerns |
 | Privilege escalation | Partial | Central permission policies, contributor/viewer invitation limits, endpoint checks, viewer audit denial, active-member assignment checks, and administrative audit evidence exist; broader membership management remains planned |
@@ -38,12 +38,13 @@ and deployment environment.
 | Mass assignment | Implemented for current contracts | Explicit request contracts omit tenant ownership and persistence fields; assignees must be active current-workspace members |
 | Resource exhaustion | Implemented baseline | Request bodies/headers and pagination are bounded; jobs have leases, prefetch, and retry ceilings; user/IP fixed-window rate limits return safe `429`; capacity/load tuning remains deployment-specific |
 | Compromised CI action | Implemented baseline | Current full commit-SHA pins, minimal default permissions, dependency review, CodeQL, Gitleaks, and Dependabot |
-| Vulnerable or substituted release image | Implemented baseline | Release rebuild and tests, high/critical image scan before publication, semantic and commit-addressed tags, immutable digest evidence, and SPDX JSON SBOM; signing and provenance attestation remain planned |
+| Vulnerable or substituted release image | Implemented baseline | Read-only release verification, high/critical image scan, checksummed candidate handoff, version and commit tags, immutable digest evidence, and SPDX JSON SBOM; signing and provenance attestation remain planned |
 | Over-privileged deployment identity | Planned | Workload identity, scoped roles, protected environments, auditable deploy job |
 
 ## Residual risk
 
-Application-level query filters are backed by composite relational ownership constraints;
+Application-level query filters and the save-time tenant write guard are backed by composite
+relational ownership constraints;
 PostgreSQL row-level security is deferred and should be reconsidered as data sensitivity and scale
 grow. The identity provider controls signing-key lifecycle and token revocation. CI, reviewable
 increments, tests, and updated ADRs reduce but do not eliminate supply-chain, configuration, or

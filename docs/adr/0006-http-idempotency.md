@@ -37,5 +37,5 @@ the project-write policy before the stored response is read.
 
 ## Evidence
 
-Functional tests prove exact replay, one project-slot consumption, changed-body rejection, separate
+Functional tests check exact replay, one project-slot consumption, changed-body rejection, separate
 tenant/user scopes, one persisted record per scope, and safe Problem Details.

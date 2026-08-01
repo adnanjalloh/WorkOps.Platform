@@ -46,6 +46,6 @@ local demonstration and automated tests; it is not malware protection.
 
 - `AttachmentPolicyTests` covers accepted formats, MIME/extension mismatches, signature mismatch,
   invalid UTF-8, empty files, and the size limit.
-- Integration tests prove tenant-separated local storage paths.
-- Functional tests prove exact authorized download, `nosniff`, path-traversal rejection,
+- Integration tests check tenant-separated local storage paths.
+- Functional tests check exact authorized download, `nosniff`, path-traversal rejection,
   MIME/signature mismatch rejection, oversize rejection, and cross-workspace denial.

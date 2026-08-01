@@ -15,23 +15,28 @@ before making the repository public or creating the first release.
 
 ## `master` ruleset
 
-- [ ] Require a pull request with at least one approval.
-- [ ] For a solo repository, do not create fake reviewers; if genuine approval is unavailable,
-  require all checks and document self-review until a trusted reviewer participates.
-- [ ] Dismiss stale approvals and require approval of the latest reviewable push.
+- [ ] Require a pull request with **zero required approvals** while this is a solo-maintainer
+  repository; document self-review in the pull-request description and never manufacture approval.
+- [ ] Increase required approvals and enable stale/latest-push approval rules only after a genuine
+  trusted reviewer is consistently available.
 - [ ] Require conversation resolution and block force pushes and branch deletion.
 - [ ] Require linear history and prevent bypass except for a documented emergency maintainer path.
-- [ ] Require `CI / verify`, `CodeQL / Analyze C#`, and `Dependency review / review` checks to pass.
+- [ ] After the first hosted branch and validation-PR runs, select the actual displayed CI, CodeQL,
+  and dependency-review check names in the ruleset; do not guess or hard-code unseen contexts.
 - [ ] Require the branch to be current before merge.
 
 ## Releases
 
-- [ ] Create a `release` environment with a required reviewer and no untrusted deployment branches.
+- [ ] Create a `release` environment with no untrusted deployment branches. Add a required reviewer
+  only when a genuinely independent reviewer is available; otherwise describe the maintainer gate
+  accurately.
 - [ ] Add a `v*` tag ruleset that blocks updates and deletion and limits tag creation to maintainers.
-- [ ] Confirm the workflow token may write repository contents and packages only for the release job.
+- [ ] Confirm the workflow token may write repository contents and packages only for the `publish`
+  job; the `verify` job must remain read-only and outside the protected environment.
 - [ ] Verify the GHCR package is linked to this repository and set its intended visibility.
 - [ ] After each release, compare the attached digest with the GHCR image and retain the SPDX SBOM.
 
-The workflow deliberately publishes only on a semantic version tag, verifies the tag is on
-`master`, scans before registry login, and also publishes a commit-addressed tag. Signing and
-provenance attestation remain future hardening work and must not be claimed until implemented.
+The workflow deliberately publishes only on a semantic version tag at the current `master` head.
+Its read-only verification job scans and packages the exact candidate before the protected publish
+job receives registry permissions. Signing and provenance attestation remain future hardening work
+and must not be claimed until implemented.

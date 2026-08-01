@@ -17,18 +17,20 @@ certification claim.
 - GitHub Actions with read-only default permissions and third-party actions pinned to full commits;
 - configured secret, dependency, static-analysis, and high/critical container vulnerability scans;
 - merged coverage evidence with enforced 70% line and 35% branch regression floors;
-- tag-gated release verification, an approval-capable release environment, semantic and
-  commit-addressed container tags, SPDX JSON SBOM generation, and digest evidence;
+- tag-gated read-only release verification, checksummed candidate handoff to a separate protected
+  publication job, version and commit-addressed container tags, SPDX JSON SBOM generation, and
+  digest evidence;
 - a synthetic local identity realm whose direct-grant users, audience mapping, and shared
   development password are explicitly excluded from production use;
 - clean dependency boundaries checked by tests;
 - strict bearer-token validation for issuer, audience, signature, expiration, accepted algorithms,
-  and the required `sub` claim;
+  and exactly one case-sensitive ASCII `sub` claim of at most 255 characters;
 - workspace context selected only from a route or header and accepted only after active membership
   lookup for the validated subject;
 - centralized role permissions and policy-based authorization on tenant endpoints;
 - non-disclosing `404` for absent or cross-workspace membership and `403` for suspended workspaces;
-- default-deny tenant query filters for workspaces and memberships, including the no-context case;
+- default-deny tenant query filters plus a save-time ownership guard for request, background, and
+  narrowly scoped provisioning writes, including missing-context and cross-workspace rejection;
 - named sanitization profiles on request surfaces, bounded request bodies, safe error responses, and
   logging that records metadata rather than submitted values;
 - tenant-filtered project and work-item queries backed by composite workspace ownership constraints;
@@ -78,17 +80,17 @@ certification claim.
 The [OWASP ASVS 5.0 map](asvs-map.md) connects implemented controls to review evidence. It is a
 navigation aid, not a certification or a claim that every requirement in a referenced area passes.
 
-The demo scripts keep access tokens in process memory, write only synthetic IDs and opaque versions
-to the ignored `.local/` directory, and never print credentials or tokens. The `.http` collection
-contains only the declared local-only password.
+The demo scripts write only synthetic IDs and opaque versions to the ignored `.local/` directory;
+tokens are not intentionally printed or persisted. The `.http` collection contains only the
+declared local-only password.
 
 ## Required before the first release
 
 - replace the development file scanner with a monitored antivirus service and replace ephemeral
   local storage with durable private object storage before production use;
 - redact credentials, authorization headers, personal data, and user-controlled content from logs;
-- prove cross-workspace denial, privilege boundaries, upload rejection, JWT rejection, and log/error
-  redaction through automated tests.
+- keep cross-workspace denial, privilege boundaries, upload rejection, JWT rejection, and log/error
+  redaction in the automated regression suites;
 - configure trusted reverse-proxy forwarding deliberately when TLS terminates before the process;
   do not accept forwarded headers from arbitrary networks.
 

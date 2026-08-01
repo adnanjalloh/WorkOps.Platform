@@ -11,15 +11,16 @@ secure file handling, OpenTelemetry observability, and GitHub Actions delivery.
 
 ## Status
 
-**Portfolio release candidate - not a production deployment.** The implemented backend flow, live
-demo, 78 automated tests, coverage gates, dependency audit, and container vulnerability scan pass
-locally. There is no hosted demo, and no public release is claimed.
+**Portfolio release candidate - not a production deployment.** Local verification on 2026-08-01
+completed with a zero-warning Release build, 88 passing tests, 90.7% line coverage, and 49.7% branch
+coverage. Hosted GitHub Actions verification is pending the private first push; CI enforces floors
+of 70% and 35%. There is no hosted demo, and no public release is claimed.
 
 - **Implemented:** tenant/identity boundary, projects and work items, audit/outbox/messaging,
   notifications, Redis-backed feature limits, secure attachments, observability, hardening, and
   release automation.
-- **Measured evidence:** 77.3% line and 37.8% branch coverage when the CI gate was introduced;
-  enforced floors are 70% and 35%.
+- **Evidence boundary:** local results are dated above; dependency, history, and image scans remain
+  configured hosted gates rather than timeless pass claims.
 - **Local demo:** one command runs the real containerized golden scenario with synthetic users.
 - **Production boundary:** the development file scanner, temporary file storage, local identity
   realm, and local credentials must be replaced for a real deployment.
@@ -33,6 +34,16 @@ with idempotent effects, bounded file handling, safe diagnostics, and repeatable
 
 The design keeps business boundaries explicit without manufacturing a microservice estate. Every
 major claim below links to code, tests, or an operational artifact.
+
+## Real adapters and demonstration adapters
+
+| Boundary | Portfolio implementation | Production expectation |
+|---|---|---|
+| Database, cache, messaging | Real PostgreSQL, Redis, and RabbitMQ containers | Managed or operated services with production credentials, TLS, backup, and monitoring |
+| Identity | Local Keycloak realm with synthetic users | Production OIDC provider configuration and lifecycle controls |
+| File scanning | Fail-closed port with a no-op Development adapter | Monitored malware-scanning service |
+| File storage | Private tenant-separated local paths | Durable object storage with retention and recovery controls |
+| Telemetry | Real instrumentation; OTLP export is opt-in | Authenticated collector and monitored backend |
 
 ## Architecture
 
@@ -52,8 +63,10 @@ flowchart LR
 ```
 
 The five production projects keep HTTP contracts, use cases, invariants, and adapters separate.
-Architecture tests enforce dependency direction, tenant-owned entity classification, public
-contract isolation, and sanitization coverage. See [architecture](docs/architecture.md).
+Architecture tests enforce dependency direction, model-driven tenant filter coverage, public
+contract isolation, and sanitization coverage. Persistence also rejects tenant-owned writes that
+do not match an explicit request, background, or provisioning context. See
+[architecture](docs/architecture.md).
 
 ## Golden scenario
 
@@ -82,7 +95,7 @@ sequenceDiagram
     API-->>Outsider: Non-disclosing 404
 ```
 
-The live script also proves a viewer receives `403`, an exact project replay returns the original
+The live script also checks that a viewer receives `403`, an exact project replay returns the original
 `201`, and transition audit plus notification evidence becomes visible. See the
 [demo guide](docs/demo.md) and [functional golden-flow test](tests/WorkOps.FunctionalTests/TenantIdentityEndpointTests.cs).
 
@@ -90,7 +103,7 @@ The live script also proves a viewer receives `403`, an exact project replay ret
 
 | Concern | Decision | Evidence |
 |---|---|---|
-| Tenant isolation | Establish workspace context from a validated subject plus active membership; default-deny query filters and composite ownership constraints back the boundary | [ADR 0002](docs/adr/0002-tenant-isolation.md), [middleware](src/WorkOps.Api/Tenancy/WorkspaceContextMiddleware.cs), [tests](tests/WorkOps.IntegrationTests/TenantQueryFilterTests.cs) |
+| Tenant isolation | Establish workspace context from a validated subject plus active membership; default-deny query filters, a save-time write guard, and composite ownership constraints back the boundary | [ADR 0002](docs/adr/0002-tenant-isolation.md), [middleware](src/WorkOps.Api/Tenancy/WorkspaceContextMiddleware.cs), [tests](tests/WorkOps.IntegrationTests/TenantQueryFilterTests.cs) |
 | Authorization | Central role-to-permission mapping with endpoint policies; tenant IDs never grant access by themselves | [permissions](src/WorkOps.Domain/Tenancy/Permissions.cs), [authorization handler](src/WorkOps.Api/Authorization/PermissionAuthorizationHandler.cs) |
 | Concurrent edits | Return opaque PostgreSQL `xmin` tokens and reject stale writes with `409 Conflict` | [work-item service](src/WorkOps.Application/WorkItems/WorkItemService.cs), [golden-flow test](tests/WorkOps.FunctionalTests/TenantIdentityEndpointTests.cs) |
 | Reliable delivery | Store the business change, safe audit, and outbox atomically; lease, confirm, retry, and deduplicate downstream effects | [ADR 0003](docs/adr/0003-outbox-delivery.md), [outbox processor](src/WorkOps.Application/Messaging/OutboxProcessor.cs) |
@@ -104,7 +117,7 @@ The live script also proves a viewer receives `403`, an exact project replay ret
 - active-membership workspace resolution and non-disclosing cross-workspace denial;
 - explicit request contracts, named sanitization profiles, body/header/page bounds, and safe Problem
   Details with generated correlation and trace IDs;
-- tenant-filtered persistence with composite ownership constraints for related data;
+- tenant-filtered persistence with a matching write guard and composite ownership constraints;
 - role policies, assignment boundaries, state-transition allowlists, and optimistic concurrency;
 - bounded file reads, filename/media/signature validation, fail-closed scanner port, hashes, opaque
   names, and storage outside the web root;
@@ -168,9 +181,10 @@ dotnet build -c Release --no-restore
 dotnet test -c Release --no-build --logger "trx" --collect:"XPlat Code Coverage"
 ```
 
-The 78 tests comprise 50 unit, 7 PostgreSQL/Redis/RabbitMQ/storage integration, 15 full-host
-functional, and 6 architecture tests. CI merges coverage, publishes HTML/Cobertura/Markdown
-evidence, and enforces the 70% line / 35% branch floors. See [testing](docs/testing.md).
+The 88 tests comprise 51 unit, 13 PostgreSQL/Redis/RabbitMQ/storage integration, 18 full-host
+functional, and 6 architecture tests. The dated local result is 90.7% line and 49.7% branch
+coverage. CI merges coverage, publishes HTML/Cobertura/Markdown evidence, and enforces the 70% line
+/ 35% branch floors. See [testing](docs/testing.md).
 
 ## Observability and operations
 
@@ -222,7 +236,7 @@ model.
 - [x] Atomic audit/outbox flow with idempotent notification delivery
 - [x] Tenant-aware caching, feature limits, and secure attachment baseline
 - [x] Observability, HTTP hardening, security automation, SBOM, and release evidence
-- [x] Reproducible Bash/PowerShell golden-scenario demo and recruiter review paths
+- [x] Runnable Bash/PowerShell golden-scenario demo and recruiter review paths
 - [ ] Replace local scanner/storage/identity components before any production deployment
 - [ ] Add artifact signing and provenance attestation when a public release is intentionally made
 

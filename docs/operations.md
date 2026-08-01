@@ -96,17 +96,18 @@ not a production benchmark.
 
 Run the complete local backend scenario with `./scripts/demo.sh --start` or
 `./scripts/demo.ps1 -Start`. Successful resource IDs and opaque versions are stored under the
-ignored `.local/` directory; access tokens remain in memory and are never written or displayed.
+ignored `.local/` directory; access tokens are not intentionally printed or persisted by the scripts.
 
 ## Release process
 
-The release workflow accepts only `vMAJOR.MINOR.PATCH` tags whose commit is already on `master`.
-It restores locked dependencies, verifies formatting, builds, tests, audits NuGet packages, scans
-Git history, builds the container, and blocks publication when Trivy finds a high or critical
-vulnerability. It then generates an SPDX JSON SBOM, publishes both the semantic-version image and a
-commit-addressed image to GHCR, records the image digest, and creates release notes with the SBOM
-and digest evidence attached.
+The release workflow accepts only `vMAJOR.MINOR.PATCH` tags at the current `master` head. A read-only
+job restores locked dependencies, verifies formatting, builds, tests with the same coverage gate as
+CI, audits NuGet packages, scans Git history, builds and scans the container, generates an SPDX JSON
+SBOM, and packages a checksummed candidate. Only after it succeeds does the protected publication
+job receive write permissions, load that exact candidate, publish the version and commit tags to
+GHCR, record the immutable registry digest, and create release notes with the evidence attached.
 
-Configure the `release` environment with a required reviewer before publishing. Treat tags as
-immutable and protect `v*` tags from update or deletion. Repository-side controls that cannot be
-committed are listed in [GitHub settings](github-settings.md).
+Configure the `release` environment before publishing and add a required reviewer only when that
+reviewer is genuinely independent. Treat tags as immutable and protect `v*` tags from update or
+deletion. Repository-side controls that cannot be committed are listed in
+[GitHub settings](github-settings.md).

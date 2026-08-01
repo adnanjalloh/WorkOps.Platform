@@ -122,9 +122,9 @@ five attempts, and remain recoverable through a protected, audited replay endpoi
 consumer retries once before routing a persistent failure to a durable failed-message queue.
 
 Cross-workspace access, stale versions, concurrent claims, real broker routing, and duplicate
-delivery are covered by automated tests. Redis tests prove distinct tenant keys and invalidation;
-PostgreSQL tests prove concurrent project reservations cannot exceed the plan limit; storage and
-HTTP tests prove tenant-separated file paths and non-disclosing cross-workspace downloads. Tracing
+delivery are covered by automated tests. Redis tests check distinct tenant keys and invalidation;
+PostgreSQL tests check that concurrent project reservations cannot exceed the plan limit; storage
+and HTTP tests check tenant-separated file paths and non-disclosing cross-workspace downloads. Tracing
 and metrics cover requests, outbound HTTP, PostgreSQL, runtime, messaging, cache results, job
 duration, and outbox backlog. OTLP export is disabled until an endpoint is configured.
 
