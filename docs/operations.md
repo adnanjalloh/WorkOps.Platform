@@ -22,6 +22,11 @@ starts the notification consumer, and enables authenticated Redis caching. It al
 clean-scanner stub and stores attachments in `/tmp/workops-attachments` inside the API container.
 That directory is temporary and is not a production durability design.
 
+The local Keycloak realm contains four synthetic demo users and an audience mapper for the
+`workops-cli` client. `KC_HOSTNAME_BACKCHANNEL_DYNAMIC` lets the API fetch discovery and JWKS data
+through the private Compose hostname while validating the public local issuer. This password-grant
+realm exists only for the local scripted demo and must not be promoted to a deployment.
+
 ## Cache and attachment configuration
 
 `Cache:Enabled` is false by default. When enabled, `ConnectionStrings:Redis` is required. Cache
@@ -88,6 +93,10 @@ WORKOPS_ACCESS_TOKEN=... WORKOPS_WORKSPACE_ID=... ./scripts/load-smoke.sh
 
 The script defaults to 20 sequential feature reads and labels its output as a local smoke result,
 not a production benchmark.
+
+Run the complete local backend scenario with `./scripts/demo.sh --start` or
+`./scripts/demo.ps1 -Start`. Successful resource IDs and opaque versions are stored under the
+ignored `.local/` directory; access tokens remain in memory and are never written or displayed.
 
 ## Release process
 

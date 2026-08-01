@@ -32,6 +32,12 @@ integration suite independently proves the real broker, cache, database, and loc
 The tests prove registration and HTTP behavior for observability/hardening; they do not prove a
 specific collector backend, reverse-proxy configuration, or production capacity.
 
+The Bash and PowerShell demo clients were each verified through a fresh live Compose run, including
+the idempotent project replay, viewer `403`, stale `409`, outsider `404`, and asynchronous
+audit/notification evidence. A second Bash run and a PowerShell run against saved ignored state
+also proved the non-duplicating repeat path. These scripts are reviewer tools, not substitutes for
+the automated suites.
+
 The coverage baseline recorded when the automated gate was introduced was 77.3% line coverage and
 37.8% branch coverage. CI merges collector output, publishes HTML/Cobertura/Markdown evidence, and
 requires at least 70% lines and 35% branches. These are regression floors rather than quality
@@ -60,7 +66,7 @@ To reproduce the CI coverage gate:
 
 ```bash
 dotnet tool restore
-dotnet test -c Release --no-build --collect:"XPlat Code Coverage" --results-directory artifacts/test-results
-dotnet tool run reportgenerator -- "-reports:artifacts/test-results/**/coverage.cobertura.xml" "-targetdir:artifacts/coverage" "-assemblyfilters:+WorkOps.*;-WorkOps.*Tests" "-reporttypes:Cobertura;TextSummary"
+dotnet test -c Release --no-build --collect:"XPlat Code Coverage" --results-directory artifacts/test-results -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[WorkOps.*Tests]*"
+dotnet tool run reportgenerator -- "-reports:artifacts/test-results/**/coverage.cobertura.xml" "-targetdir:artifacts/coverage" "-assemblyfilters:+WorkOps.*;-WorkOps.*Tests;-* *" "-classfilters:-Microsoft.AspNetCore.OpenApi.Generated.*;-System.Runtime.CompilerServices.*" "-reporttypes:Cobertura;TextSummary"
 ./scripts/check-coverage.sh artifacts/coverage/Cobertura.xml 70 35
 ```

@@ -11,10 +11,13 @@ before making the repository public or creating the first release.
 - [ ] Restrict workflow actions to required publishers and require full commit-SHA pins where the
   organization policy supports it.
 - [ ] Disable unused merge methods and automatically delete merged branches.
+- [ ] Apply the exact description and topics from [repository metadata](repository-metadata.md).
 
 ## `master` ruleset
 
 - [ ] Require a pull request with at least one approval.
+- [ ] For a solo repository, do not create fake reviewers; if genuine approval is unavailable,
+  require all checks and document self-review until a trusted reviewer participates.
 - [ ] Dismiss stale approvals and require approval of the latest reviewable push.
 - [ ] Require conversation resolution and block force pushes and branch deletion.
 - [ ] Require linear history and prevent bypass except for a documented emergency maintainer path.

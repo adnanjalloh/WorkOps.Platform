@@ -50,3 +50,7 @@ first release.
 - Tag-gated releases that verify the source, publish semantic-version and commit-addressed GHCR
   images, generate an SPDX JSON SBOM, and attach immutable digest evidence.
 - OWASP ASVS 5.0 area mapping and an explicit repository-settings hardening checklist.
+- Synthetic Keycloak demo identities with a CLI-to-API audience mapper and private-network
+  backchannel discovery.
+- Verified Bash and PowerShell golden-scenario clients plus a named-request HTTP collection.
+- StackExchange.Redis 3.1 with the current stable client improvements.

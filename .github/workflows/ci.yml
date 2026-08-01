@@ -54,7 +54,7 @@ jobs:
           dotnet tool run reportgenerator --
           "-reports:artifacts/test-results/**/coverage.cobertura.xml"
           "-targetdir:artifacts/coverage"
-          "-assemblyfilters:+WorkOps.*;-WorkOps.*Tests"
+          "-assemblyfilters:+WorkOps.*;-WorkOps.*Tests;-* *"
           "-classfilters:-Microsoft.AspNetCore.OpenApi.Generated.*;-System.Runtime.CompilerServices.*"
           "-reporttypes:Cobertura;HtmlInline;MarkdownSummaryGithub;TextSummary"
 

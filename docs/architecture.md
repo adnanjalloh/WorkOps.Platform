@@ -2,11 +2,12 @@
 
 ## Current scope
 
-The current milestone carries the business slice through reliable delivery, feature enforcement,
-tenant-aware caching, and private attachments. The API validates external JWTs, establishes tenant
-context, and uses tenant-filtered persistence for projects, work items, subscriptions, attachments,
-audit events, outbox/inbox records, and notifications. Domain behavior owns project quotas,
-archiving, work-item transitions, and the outbox failure state.
+The portfolio release candidate carries the business slice through reliable delivery, feature
+enforcement, tenant-aware caching, private attachments, production diagnostics, and a runnable
+golden-scenario demo. The API validates external JWTs, establishes tenant context, and uses
+tenant-filtered persistence for projects, work items, subscriptions, attachments, audit events,
+outbox/inbox records, and notifications. Domain behavior owns project quotas, archiving, work-item
+transitions, and the outbox failure state.
 
 | Project | Role | Allowed project dependencies |
 |---|---|---|
@@ -37,9 +38,11 @@ flowchart TB
     Worker -- optional OTLP --> Telemetry
 ```
 
-Docker Compose currently runs the API, PostgreSQL, Redis, RabbitMQ, and a local identity provider
-with an imported synthetic realm. The local attachment adapter writes to an API-only temporary
-directory for demonstration; production object storage and telemetry export remain future work.
+Docker Compose runs the API, PostgreSQL, Redis, RabbitMQ, and a local identity provider with an
+imported synthetic realm. Dynamic backchannel URLs let the API retrieve identity metadata and keys
+over the private Compose network while tokens retain the public local issuer. The local attachment
+adapter writes to an API-only temporary directory for demonstration; production object storage and
+telemetry export remain future work.
 
 ## Tenant request path
 

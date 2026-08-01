@@ -1,0 +1,138 @@
+@api = http://localhost:8080
+@identity = http://localhost:8081
+@demoPassword = local-demo-only
+@runId = change-me-before-running
+
+### Owner token
+# @name ownerToken
+POST {{identity}}/realms/workops/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+client_id=workops-cli&grant_type=password&scope=openid%20profile%20email&username=demo-owner&password={{demoPassword}}
+
+@ownerAccessToken = {{ownerToken.response.body.$.access_token}}
+
+### Contributor token
+# @name contributorToken
+POST {{identity}}/realms/workops/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+client_id=workops-cli&grant_type=password&scope=openid%20profile%20email&username=demo-contributor&password={{demoPassword}}
+
+@contributorAccessToken = {{contributorToken.response.body.$.access_token}}
+
+### Contributor subject
+# @name contributorUserInfo
+GET {{identity}}/realms/workops/protocol/openid-connect/userinfo
+Authorization: Bearer {{contributorAccessToken}}
+
+@contributorSubject = {{contributorUserInfo.response.body.$.sub}}
+
+### Create workspace
+# @name createWorkspace
+POST {{api}}/api/v1/workspaces/
+Authorization: Bearer {{ownerAccessToken}}
+Content-Type: application/json
+
+{
+  "name": "WorkOps HTTP Demo",
+  "slug": "workops-http-{{runId}}"
+}
+
+@workspaceId = {{createWorkspace.response.body.$.id}}
+
+### Invite contributor
+# @name inviteContributor
+POST {{api}}/api/v1/workspaces/{{workspaceId}}/invitations
+Authorization: Bearer {{ownerAccessToken}}
+Content-Type: application/json
+
+{
+  "subject": "{{contributorSubject}}",
+  "displayName": "Demo Contributor",
+  "role": "ProjectContributor"
+}
+
+@contributorUserId = {{inviteContributor.response.body.$.userId}}
+
+### Create project
+# @name createProject
+POST {{api}}/api/v1/projects/
+Authorization: Bearer {{ownerAccessToken}}
+X-Workspace-Id: {{workspaceId}}
+Idempotency-Key: http-demo-project-{{runId}}
+Content-Type: application/json
+
+{
+  "name": "Delivery Platform",
+  "key": "http-demo-{{runId}}"
+}
+
+@projectId = {{createProject.response.body.$.id}}
+
+### Create work item
+# @name createWorkItem
+POST {{api}}/api/v1/projects/{{projectId}}/work-items
+Authorization: Bearer {{contributorAccessToken}}
+X-Workspace-Id: {{workspaceId}}
+Content-Type: application/json
+
+{
+  "title": "Deliver tenant-safe workflow",
+  "priority": "High",
+  "assigneeUserId": "{{contributorUserId}}",
+  "labels": ["backend", "tenant-safe"]
+}
+
+@workItemId = {{createWorkItem.response.body.$.id}}
+@createdVersion = {{createWorkItem.response.body.$.version}}
+
+### Update work item
+# @name updateWorkItem
+PATCH {{api}}/api/v1/work-items/{{workItemId}}
+Authorization: Bearer {{contributorAccessToken}}
+X-Workspace-Id: {{workspaceId}}
+Content-Type: application/json
+
+{
+  "title": "Deliver secure tenant workflow",
+  "priority": "Critical",
+  "assigneeUserId": "{{contributorUserId}}",
+  "labels": ["api", "security"],
+  "expectedVersion": "{{createdVersion}}"
+}
+
+@updatedVersion = {{updateWorkItem.response.body.$.version}}
+
+### Transition work item
+# @name transitionWorkItem
+POST {{api}}/api/v1/work-items/{{workItemId}}/transitions
+Authorization: Bearer {{contributorAccessToken}}
+X-Workspace-Id: {{workspaceId}}
+Content-Type: application/json
+
+{
+  "targetStatus": "InProgress",
+  "expectedVersion": "{{updatedVersion}}"
+}
+
+### Stale transition - expect 409 concurrency_conflict
+POST {{api}}/api/v1/work-items/{{workItemId}}/transitions
+Authorization: Bearer {{contributorAccessToken}}
+X-Workspace-Id: {{workspaceId}}
+Content-Type: application/json
+
+{
+  "targetStatus": "Blocked",
+  "expectedVersion": "{{updatedVersion}}"
+}
+
+### Audit evidence
+GET {{api}}/api/v1/audit-events?page=1&pageSize=20&action=work_item.transitioned&entityType=work_item
+Authorization: Bearer {{ownerAccessToken}}
+X-Workspace-Id: {{workspaceId}}
+
+### Notification evidence
+GET {{api}}/api/v1/notifications?page=1&pageSize=20
+Authorization: Bearer {{contributorAccessToken}}
+X-Workspace-Id: {{workspaceId}}

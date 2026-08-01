@@ -19,6 +19,8 @@ certification claim.
 - merged coverage evidence with enforced 70% line and 35% branch regression floors;
 - tag-gated release verification, an approval-capable release environment, semantic and
   commit-addressed container tags, SPDX JSON SBOM generation, and digest evidence;
+- a synthetic local identity realm whose direct-grant users, audience mapping, and shared
+  development password are explicitly excluded from production use;
 - clean dependency boundaries checked by tests;
 - strict bearer-token validation for issuer, audience, signature, expiration, accepted algorithms,
   and the required `sub` claim;
@@ -75,6 +77,10 @@ certification claim.
 
 The [OWASP ASVS 5.0 map](asvs-map.md) connects implemented controls to review evidence. It is a
 navigation aid, not a certification or a claim that every requirement in a referenced area passes.
+
+The demo scripts keep access tokens in process memory, write only synthetic IDs and opaque versions
+to the ignored `.local/` directory, and never print credentials or tokens. The `.http` collection
+contains only the declared local-only password.
 
 ## Required before the first release
 

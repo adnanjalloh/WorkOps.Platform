@@ -1,59 +1,83 @@
-# Demo
+# Golden-scenario demo
 
-## Current demo
+## What it proves
 
-The current milestone exposes two operational endpoints:
+The live demo runs against the same PostgreSQL, Redis, RabbitMQ, Keycloak, and API adapters used by
+Docker Compose. It uses only synthetic local users and data, and checks:
 
-```text
-GET /health/live
-GET /health/ready
+1. owner, contributor, viewer, and outsider authentication;
+2. two independent workspace boundaries;
+3. contributor and viewer invitation with role-scoped permissions;
+4. project creation plus exact `Idempotency-Key` replay;
+5. viewer write denial as `403 Forbidden`;
+6. assigned and labeled work-item creation, update, and `Backlog -> InProgress` transition;
+7. stale-version rejection as `409 concurrency_conflict`;
+8. cross-workspace lookup denial as a non-disclosing `404`;
+9. visible safe transition audit and outbox-delivered notification.
+
+Tokens remain in process memory and are never printed or written. The saved state contains only
+synthetic resource IDs and opaque versions.
+
+## Run it
+
+macOS/Linux prerequisites: Docker Desktop, `curl`, and `jq`.
+
+```bash
+./scripts/demo.sh --start
 ```
 
-The authenticated workspace boundary also exposes:
+PowerShell prerequisite: Docker Desktop and PowerShell 7.
 
-```text
-GET  /api/v1/me/
-GET  /api/v1/me/capabilities
-POST /api/v1/workspaces/
-GET  /api/v1/workspaces/{workspaceId}
-GET  /api/v1/workspaces/{workspaceId}/members
-POST /api/v1/workspaces/{workspaceId}/invitations
-POST /api/v1/projects/
-GET  /api/v1/projects/
-GET  /api/v1/projects/{projectId}
-POST /api/v1/projects/{projectId}/archive
-POST /api/v1/projects/{projectId}/work-items
-GET  /api/v1/work-items/{workItemId}
-PATCH /api/v1/work-items/{workItemId}
-POST /api/v1/work-items/{workItemId}/transitions
-GET  /api/v1/audit-events
-GET  /api/v1/notifications
-POST /api/v1/operations/outbox/{messageId}/replay
-GET  /api/v1/features
-PUT  /api/v1/workspaces/{workspaceId}/plan
-POST /api/v1/work-items/{workItemId}/attachments
-GET  /api/v1/attachments/{attachmentId}
+```powershell
+./scripts/demo.ps1 -Start
 ```
 
-`POST /api/v1/projects/` also accepts an optional `Idempotency-Key` header. Repeat the exact request
-to receive the original `201` response with `Idempotency-Replayed: true`; changing the body while
-reusing the key produces a safe `409`.
+The first Keycloak import can take up to two minutes. The scripts save successful IDs under the
+ignored `.local/` directory. A repeat run reuses those IDs, verifies the current work item, and
+rechecks the stale-write and outsider boundaries without duplicating records.
 
-Run the Compose stack to use the local identity provider, PostgreSQL, Redis, and RabbitMQ. The automated
-suite executes the backend golden flow with owner, contributor, viewer, and outsider identities. It
-verifies the atomic transition/audit/outbox transaction, a real broker publish, duplicate-safe
-notification delivery, assignment, labels, transitions, tenant and role boundaries, pagination,
-filtering, stale-version handling, feature quotas, cache invalidation, secure attachment validation,
-exact downloads, and cross-workspace file denial. The hardening tests additionally verify
-correlation/trace diagnostics, rate limiting, CORS denial, security headers, production HSTS/OpenAPI
-behavior, and submitted-value absence from tested logs. No hosted demo is claimed yet.
+Environment overrides:
 
-## Planned demo script
+| Variable | Default | Purpose |
+|---|---|---|
+| `WORKOPS_API_URL` | `http://localhost:8080` | API base URL |
+| `WORKOPS_IDENTITY_URL` | `http://localhost:8081` | local identity base URL |
+| `WORKOPS_DEMO_PASSWORD` | `local-demo-only` | explicit synthetic realm password |
+| `WORKOPS_DEMO_STATE` | `.local/demo-state.json` | ignored ID/version state file |
 
-A deterministic script will expose the already-tested project, work-item, audit, and notification
-flow at the terminal. The automated scenario already proves that a second workspace cannot infer
-the work item's existence, duplicate messages do not duplicate notifications, and a stale version
-returns `409 Conflict`.
+`WORKOPS_API_HOST_HEADER` is available only for reverse-proxy or container-based validation where a
+specific API `Host` header is required; normal local runs leave it unset.
 
-The final script will be idempotent, print no tokens or credentials, and include Bash and PowerShell
-entry points.
+Stop the stack while preserving the PostgreSQL volume:
+
+```bash
+docker compose down
+```
+
+## Manual HTTP collection
+
+[workops.http](../demo/workops.http) contains named requests whose response fields feed the next
+request. Set a fresh `runId`, run the token and user-info requests, then proceed in file order. The
+collection intentionally keeps the local-only password visible so no real secret is implied.
+
+The imported users are:
+
+- `demo-owner`
+- `demo-contributor`
+- `demo-viewer`
+- `demo-outsider`
+
+Do not reuse the development realm, client flow, usernames, or password in a deployed environment.
+
+## Trace the implementation
+
+- HTTP entry points: [workspace](../src/WorkOps.Api/Endpoints/WorkspaceEndpoints.cs),
+  [project](../src/WorkOps.Api/Endpoints/ProjectEndpoints.cs), and
+  [work item](../src/WorkOps.Api/Endpoints/WorkItemEndpoints.cs)
+- Tenant context: [middleware](../src/WorkOps.Api/Tenancy/WorkspaceContextMiddleware.cs)
+- Business flow: [work-item service](../src/WorkOps.Application/WorkItems/WorkItemService.cs)
+- Reliable delivery: [outbox processor](../src/WorkOps.Application/Messaging/OutboxProcessor.cs) and
+  [worker](../src/WorkOps.Infrastructure/Messaging/OutboxWorker.cs)
+- Automated twin: [functional golden-flow test](../tests/WorkOps.FunctionalTests/TenantIdentityEndpointTests.cs)
+
+
