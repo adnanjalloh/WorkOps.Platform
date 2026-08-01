@@ -2,28 +2,30 @@
 
 ## Current evidence
 
-The tenant and identity milestone includes four test projects with 26 tests:
+The project and work-item milestone includes four test projects with 40 tests:
 
-- Unit: workspace identifiers, sanitization malicious corpus, role permissions, and one-time context
+- Unit: workspace identifiers, sanitization malicious corpus, role permissions, project archiving,
+  work-item state transitions and updates, version-token conversion, and one-time context
   establishment.
 - Integration: real PostgreSQL migrations and default-deny query filters, including switching
-  between two workspaces.
+  between two workspaces, plus a real two-context optimistic-concurrency collision.
 - Functional: real PostgreSQL plus the ASP.NET Core host, locally signed test JWTs, token rejection,
-  cross-workspace denial, permissions, suspension, inactive membership, and malicious input.
+  cross-workspace denial, permissions, suspension, inactive membership, malicious input, project
+  lifecycle, invitation and assignment boundaries, labeled work-item updates and transitions,
+  pagination and filters, archive behavior, and stale-version conflicts.
 - Architecture: dependency direction, request sanitization-policy coverage, and tenant-owned entity
-  classification.
+  classification, plus API persistence-boundary and public-contract isolation checks.
 
-These tests prove the implemented identity and workspace boundary. They do not yet prove the future
-work-item flow, messaging, caching, file storage, observability, or production readiness.
+These tests prove the implemented identity, workspace, project, and initial work-item flow. They do
+not yet prove messaging, caching, file storage, observability, or production readiness.
 
 ## Planned suites
 
-- Unit tests for work-item state transitions, feature limits, upload validation, backoff, and
-  injected time.
-- Additional PostgreSQL integration tests for concurrency, outbox locks, and idempotency.
+- Unit tests for feature limits, upload validation, backoff, and injected time.
+- Additional PostgreSQL integration tests for outbox locks and idempotency.
 - Redis and message-transport integration tests for tenant-safe keys and duplicate handling.
-- Functional tests for the golden scenario, realistic tokens, Problem Details, denial paths,
-  concurrency conflicts, idempotency mismatch, and rate limiting.
+- Functional tests for the remaining golden scenario, outbox delivery, idempotency mismatch, and
+  rate limiting.
 - Security regression tests for invalid tokens, privilege escalation, hostile uploads, oversized
   requests, safe logs/errors, CORS, and production OpenAPI behavior.
 

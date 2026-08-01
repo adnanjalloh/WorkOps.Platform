@@ -2,10 +2,10 @@
 
 ## Current scope
 
-The current milestone establishes the five-project modular-monolith boundary and implements its
-first vertical platform capability: identity and tenant isolation. The API validates external JWTs,
-resolves an active workspace membership, establishes a request-scoped workspace context, and then
-uses tenant-filtered persistence for normal reads.
+The current milestone extends the five-project modular monolith through its first business slice.
+The API validates external JWTs, resolves active workspace membership, establishes request-scoped
+tenant context, and uses tenant-filtered persistence for projects and work items. Domain behavior
+now owns project archiving and the work-item transition state machine.
 
 | Project | Role | Allowed project dependencies |
 |---|---|---|
@@ -58,6 +58,33 @@ sequenceDiagram
     API-->>Client: Resource, 403 suspended, or non-disclosing 404
 ```
 
+Project and work-item rows carry a non-null workspace identifier. A composite foreign key prevents
+a work item from pointing to a project in another workspace, while assignment is accepted only for
+an active member of the current workspace.
+
+## Implemented work-item sequence
+
+```mermaid
+sequenceDiagram
+    actor Contributor
+    participant API
+    participant Domain
+    participant DB as PostgreSQL
+
+    Contributor->>API: Update or transition + expected version
+    API->>DB: Load through tenant filter
+    API->>Domain: Validate update or state transition
+    Domain-->>API: Accepted domain state
+    API->>DB: UPDATE row WHERE xmin = expected version
+    alt version matches
+        DB-->>API: New xmin token
+        API-->>Contributor: 200 OK
+    else stale version
+        DB-->>API: No matching row version
+        API-->>Contributor: 409 Conflict
+    end
+```
+
 ## Planned golden-scenario sequence
 
 ```mermaid
@@ -72,7 +99,7 @@ sequenceDiagram
     Member->>API: Transition work item with expected version
     API->>AuthZ: Check workspace membership and resource permission
     AuthZ-->>API: Allow
-    API->>DB: Update item + audit event + outbox message (one transaction)
+    API->>DB: Update item + audit event + outbox message (one transaction, planned)
     DB-->>API: New version
     API-->>Member: 200 OK
     Worker->>DB: Lease pending outbox message
@@ -81,8 +108,9 @@ sequenceDiagram
     Worker->>DB: Mark outbox message processed
 ```
 
-Cross-workspace access and stale versions will be tested as non-disclosing denial and `409
-Conflict`, respectively.
+Cross-workspace access and stale versions are tested as non-disclosing denial and `409 Conflict`,
+respectively. Audit persistence, outbox delivery, and idempotent notification handling are the next
+milestone.
 
 ## Decisions
 

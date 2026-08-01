@@ -18,3 +18,8 @@ first release.
 - Verified request-scoped workspace context with default-deny tenant query filters.
 - Sanitization profiles with automated request-surface coverage.
 - Container-backed tenant-isolation and HTTP security regression tests.
+- Tenant-safe project creation, lookup, filtering, pagination, and archiving.
+- Contributor and viewer invitations with role and membership boundaries.
+- Assigned, labeled work-item creation and updates with an explicit transition state machine.
+- Opaque PostgreSQL `xmin` concurrency tokens with stale writes returned as `409 Conflict`.
+- Functional coverage for the initial project and work-item golden scenario.

@@ -7,11 +7,11 @@ A production-minded multi-tenant workflow API being built with ASP.NET Core and 
 
 ## Status
 
-**Tenant and identity milestone - not yet a production release.** The repository now provides a
-PostgreSQL-backed workspace boundary, strict JWT validation, verified membership context,
-permission policies, input sanitization, migrations, and container-backed isolation tests. The
-work-item flow, messaging, caching, file handling, observability, and full golden scenario remain
-planned. There is no hosted demo.
+**Project and work-item milestone - not yet a production release.** The repository now provides a
+PostgreSQL-backed workspace boundary, strict JWT validation, permission policies, tenant-safe
+projects and work items, validated assignment and labels, an explicit state machine, bounded
+filtering and pagination, and database-enforced optimistic concurrency. Messaging, caching, file
+handling, observability, and the remaining golden scenario are planned. There is no hosted demo.
 
 ## Thirty-second overview
 
@@ -42,11 +42,11 @@ See [architecture](docs/architecture.md),
 
 ## Golden scenario
 
-The planned end-to-end scenario follows an authenticated workspace member creating and
-transitioning a work item. The same transaction will persist the aggregate update, an audit event,
-and an outbox message. A background worker will process the message idempotently. Tests will prove
-cross-workspace denial, duplicate-message safety, and a `409 Conflict` for a stale concurrency
-token. See [demo plan](docs/demo.md).
+The first half of the end-to-end scenario is implemented: an owner invites a contributor, creates a
+project, and the contributor creates, assigns, updates, and transitions a labeled work item. Tests
+prove cross-workspace denial, permission boundaries, invalid-transition rejection, and a `409
+Conflict` for a stale concurrency token. The next milestone will add the audit event, transactional
+outbox, idempotent worker, and notification result. See [demo plan](docs/demo.md).
 
 ## Security highlights
 
@@ -57,12 +57,16 @@ Implemented:
 - pinned stable SDK/runtime container tags and a non-root, read-only container configuration;
 - minimal GitHub Actions permissions and full commit-SHA action pins;
 - Gitleaks, dependency review, CodeQL, and NuGet audit configuration;
-- dependency-direction tests for the initial architecture.
+- dependency-direction tests for the initial architecture;
 - strict JWT issuer, audience, signature, lifetime, subject, and algorithm validation;
 - workspace context derived from validated identity and active membership;
 - centralized role-to-permission mapping and endpoint authorization policies;
 - default-deny Entity Framework tenant filters with non-disclosing cross-workspace denial;
 - explicit input sanitization profiles and automated request-contract coverage;
+- tenant-filtered project and work-item persistence with composite ownership constraints;
+- contributor/viewer invitation limits plus active-member assignment validation;
+- domain-enforced work-item transitions and opaque PostgreSQL `xmin` version tokens;
+- bounded, filtered, directly projected list queries;
 - PostgreSQL migrations and container-backed security regression tests.
 
 Planned controls are documented in [security](docs/security.md) and the
@@ -104,9 +108,11 @@ dotnet build -c Release --no-restore
 dotnet test -c Release --no-build --logger "trx" --collect:"XPlat Code Coverage"
 ```
 
-The current 26 tests cover identifiers, input sanitization, permissions, dependency direction,
-request policy coverage, PostgreSQL tenant filters, JWT rejection, membership status, and
-cross-workspace denial. The full strategy and honest gaps are in [testing](docs/testing.md).
+The current 40 tests cover identifiers, input sanitization, permissions, dependency direction,
+request policy coverage, PostgreSQL tenant filters and concurrency, JWT rejection, membership
+status, cross-workspace denial, project lifecycle, work-item transitions, assignment, labels,
+filtering, pagination, and stale-version conflicts. The full strategy and honest gaps are in
+[testing](docs/testing.md).
 
 ## Review paths
 
@@ -127,7 +133,7 @@ cross-workspace denial. The full strategy and honest gaps are in [testing](docs/
 ## Roadmap
 
 - [x] Tenant and identity boundary with cross-workspace tests
-- [ ] Project/work-item vertical slice with optimistic concurrency
+- [x] Project/work-item vertical slice with optimistic concurrency
 - [ ] Transactional audit and outbox processing with idempotent notification delivery
 - [ ] Tenant-aware caching, feature limits, and secure file attachments
 - [ ] OpenTelemetry, structured logging, rate limiting, and production hardening
