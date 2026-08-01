@@ -23,3 +23,9 @@ first release.
 - Assigned, labeled work-item creation and updates with an explicit transition state machine.
 - Opaque PostgreSQL `xmin` concurrency tokens with stale writes returned as `409 Conflict`.
 - Functional coverage for the initial project and work-item golden scenario.
+- Safe tenant-scoped audit history with bounded filtering and administrator authorization.
+- Atomic work-item transition, audit-event, and outbox persistence.
+- Leased outbox processing with bounded deterministic backoff and recoverable failure state.
+- Publisher-confirmed RabbitMQ routing, explicit consumer acknowledgments, and a failed-message queue.
+- Tenant-scoped inbox deduplication and a development notification feed.
+- Protected, audited replay for failed outbox messages.

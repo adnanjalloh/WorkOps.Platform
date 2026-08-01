@@ -30,14 +30,22 @@ certification claim.
 - invitation role limits and active-current-workspace validation for work-item assignment;
 - allowlisted state transitions, priorities, labels, search terms, and page bounds;
 - opaque PostgreSQL `xmin` concurrency tokens with stale updates mapped to `409 Conflict`;
+- tenant-filtered audit, outbox, inbox, and notification data with composite ownership constraints;
+- audit metadata and broker payloads restricted to generated identifiers, state names, field names,
+  correlation IDs, and other non-content metadata;
+- validated internal message envelopes with durable RabbitMQ routing and publisher confirms;
+- tenant-scoped inbox and notification uniqueness constraints that suppress duplicate effects;
+- bounded outbox attempts, safe generic failure codes, a failed-message queue, and no raw exception
+  persistence;
+- owner/administrator-only audit queries and failed-outbox replay, with replay itself audited;
 - PostgreSQL-backed tests for tenant filtering plus HTTP tests for token rejection, cross-workspace
   denial, inactive membership, suspension, capabilities, malicious input, assignment boundaries,
-  invalid state changes, and concurrent-update conflicts.
+  invalid state changes, concurrent-update conflicts, audit authorization, and duplicate delivery.
 
 ## Required before the first release
 
-- keep tenant identifiers in database rows, cache keys, file paths, messages, audit events, and
-  idempotency records;
+- keep tenant identifiers in future cache keys and file paths as they are already kept in current
+  database rows, messages, audit events, and idempotency records;
 - allowlist upload types, inspect signatures, generate server-side names, and authorize downloads;
 - add request-size limits, explicit CORS, HTTPS enforcement in deployed environments, rate limits,
   and production-safe OpenAPI behavior;

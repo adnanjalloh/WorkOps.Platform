@@ -7,11 +7,12 @@ A production-minded multi-tenant workflow API being built with ASP.NET Core and 
 
 ## Status
 
-**Project and work-item milestone - not yet a production release.** The repository now provides a
-PostgreSQL-backed workspace boundary, strict JWT validation, permission policies, tenant-safe
-projects and work items, validated assignment and labels, an explicit state machine, bounded
-filtering and pagination, and database-enforced optimistic concurrency. Messaging, caching, file
-handling, observability, and the remaining golden scenario are planned. There is no hosted demo.
+**Audit and reliable-delivery milestone - not yet a production release.** The repository now
+provides tenant-safe projects and work items, database-enforced optimistic concurrency, safe audit
+history, a transactional outbox, leased retries with bounded backoff, publisher-confirmed RabbitMQ
+delivery, an idempotent inbox, and a development notification feed. Caching, feature limits, file
+handling, broader observability, production hardening, and a runnable demo script remain planned.
+There is no hosted demo.
 
 ## Thirty-second overview
 
@@ -38,15 +39,17 @@ flowchart LR
 
 See [architecture](docs/architecture.md),
 [ADR 0001: modular monolith](docs/adr/0001-modular-monolith.md), and
-[ADR 0002: tenant isolation](docs/adr/0002-tenant-isolation.md).
+[ADR 0002: tenant isolation](docs/adr/0002-tenant-isolation.md), and
+[ADR 0003: outbox delivery](docs/adr/0003-outbox-delivery.md).
 
 ## Golden scenario
 
-The first half of the end-to-end scenario is implemented: an owner invites a contributor, creates a
-project, and the contributor creates, assigns, updates, and transitions a labeled work item. Tests
-prove cross-workspace denial, permission boundaries, invalid-transition rejection, and a `409
-Conflict` for a stale concurrency token. The next milestone will add the audit event, transactional
-outbox, idempotent worker, and notification result. See [demo plan](docs/demo.md).
+The end-to-end backend scenario is implemented: an owner invites a contributor and creates a
+project; the contributor creates, assigns, updates, and transitions a labeled work item; the same
+database transaction stores a safe audit event and outbox message; the worker publishes through
+RabbitMQ; and an inbox-protected handler records one notification. Tests prove atomic persistence,
+real broker routing, harmless duplicate delivery, cross-workspace denial, permission boundaries,
+and `409 Conflict` for stale versions. See [demo plan](docs/demo.md).
 
 ## Security highlights
 
@@ -67,6 +70,12 @@ Implemented:
 - contributor/viewer invitation limits plus active-member assignment validation;
 - domain-enforced work-item transitions and opaque PostgreSQL `xmin` version tokens;
 - bounded, filtered, directly projected list queries;
+- tenant-scoped audit, outbox, inbox, and notification rows with relational ownership constraints;
+- safe audit metadata and message payloads that exclude work-item titles and submitted content;
+- leased outbox claims, five-attempt retry ceilings, deterministic jitter, and recoverable failure;
+- RabbitMQ publisher confirms, durable routing, a failed-message queue, and explicit acknowledgments;
+- inbox uniqueness that makes notification delivery idempotent under retries;
+- permission-protected audit reads and audited failed-outbox replay;
 - PostgreSQL migrations and container-backed security regression tests.
 
 Planned controls are documented in [security](docs/security.md) and the
@@ -108,16 +117,16 @@ dotnet build -c Release --no-restore
 dotnet test -c Release --no-build --logger "trx" --collect:"XPlat Code Coverage"
 ```
 
-The current 40 tests cover identifiers, input sanitization, permissions, dependency direction,
-request policy coverage, PostgreSQL tenant filters and concurrency, JWT rejection, membership
-status, cross-workspace denial, project lifecycle, work-item transitions, assignment, labels,
-filtering, pagination, and stale-version conflicts. The full strategy and honest gaps are in
+The current 52 tests cover the identity and project boundaries plus safe audit metadata, atomic
+outbox creation, real PostgreSQL lease contention, deterministic backoff, bounded failure and
+replay, real RabbitMQ publishing, internal-message validation, duplicate inbox handling, and a
+single visible notification after repeated delivery. The full strategy and honest gaps are in
 [testing](docs/testing.md).
 
 ## Review paths
 
 - **2-minute hiring-manager tour:** this overview -> [architecture](docs/architecture.md) -> [demo plan](docs/demo.md)
-- **10-minute backend review:** [project map](#repository-map) -> [architecture tests](tests/WorkOps.ArchitectureTests/DependencyRuleTests.cs) -> [roadmap](#roadmap)
+- **10-minute backend review:** [work-item service](src/WorkOps.Application/WorkItems/WorkItemService.cs) -> [outbox worker](src/WorkOps.Infrastructure/Messaging/OutboxWorker.cs) -> [functional test](tests/WorkOps.FunctionalTests/TenantIdentityEndpointTests.cs)
 - **Security review:** [threat model](docs/threat-model.md) -> [security controls](docs/security.md) -> [CI](.github/workflows/ci.yml)
 - **Delivery review:** [CI](.github/workflows/ci.yml) -> [Dockerfile](Dockerfile) -> [operations](docs/operations.md)
 
@@ -134,7 +143,7 @@ filtering, pagination, and stale-version conflicts. The full strategy and honest
 
 - [x] Tenant and identity boundary with cross-workspace tests
 - [x] Project/work-item vertical slice with optimistic concurrency
-- [ ] Transactional audit and outbox processing with idempotent notification delivery
+- [x] Transactional audit and outbox processing with idempotent notification delivery
 - [ ] Tenant-aware caching, feature limits, and secure file attachments
 - [ ] OpenTelemetry, structured logging, rate limiting, and production hardening
 - [ ] Reproducible golden-scenario demo and release evidence

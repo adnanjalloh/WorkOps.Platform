@@ -2,10 +2,10 @@
 
 ## Current scope
 
-The current milestone extends the five-project modular monolith through its first business slice.
-The API validates external JWTs, resolves active workspace membership, establishes request-scoped
-tenant context, and uses tenant-filtered persistence for projects and work items. Domain behavior
-now owns project archiving and the work-item transition state machine.
+The current milestone carries the first business slice through reliable asynchronous delivery. The
+API validates external JWTs, establishes tenant context, and uses tenant-filtered persistence for
+projects, work items, audit events, outbox/inbox records, and notifications. Domain behavior owns
+project archiving, work-item transitions, and the outbox failure state.
 
 | Project | Role | Allowed project dependencies |
 |---|---|---|
@@ -28,15 +28,16 @@ flowchart TB
     Api --> Db[("PostgreSQL")]
     Api -. planned .-> Cache[("Redis")]
     Api -. planned .-> Files["Private file storage"]
-    Worker["Planned outbox worker"] -.-> Db
-    Worker -.-> Broker["Planned message transport"]
-    Broker --> Notifications["Notification handler"]
+    Worker["Leased outbox worker"] --> Db
+    Worker --> Broker["RabbitMQ"]
+    Broker --> Notifications["Idempotent notification handler"]
+    Notifications --> Db
     Api -. traces and metrics .-> Telemetry["OpenTelemetry collector"]
     Worker -. traces and metrics .-> Telemetry
 ```
 
-Docker Compose currently runs the API, PostgreSQL, and a local identity provider with an imported
-synthetic realm. Redis, message transport, file storage, and telemetry remain future milestones.
+Docker Compose currently runs the API, PostgreSQL, RabbitMQ, and a local identity provider with an
+imported synthetic realm. Redis, file storage, and telemetry remain future milestones.
 
 ## Tenant request path
 
@@ -85,7 +86,7 @@ sequenceDiagram
     end
 ```
 
-## Planned golden-scenario sequence
+## Implemented golden-scenario sequence
 
 ```mermaid
 sequenceDiagram
@@ -99,21 +100,29 @@ sequenceDiagram
     Member->>API: Transition work item with expected version
     API->>AuthZ: Check workspace membership and resource permission
     AuthZ-->>API: Allow
-    API->>DB: Update item + audit event + outbox message (one transaction, planned)
+    API->>DB: Update item + safe audit + outbox (one transaction)
     DB-->>API: New version
     API-->>Member: 200 OK
-    Worker->>DB: Lease pending outbox message
-    Worker->>Notify: Publish deterministic message ID
-    Notify->>DB: Record idempotent delivery result
+    Worker->>DB: Lease with FOR UPDATE SKIP LOCKED
+    Worker->>Notify: Publish confirmed message with stable ID
+    Notify->>DB: Insert inbox + notification atomically
     Worker->>DB: Mark outbox message processed
 ```
 
-Cross-workspace access and stale versions are tested as non-disclosing denial and `409 Conflict`,
-respectively. Audit persistence, outbox delivery, and idempotent notification handling are the next
-milestone.
+The transport is deliberately at-least-once. A crash after broker confirmation but before the
+outbox row is marked processed can publish the same message again; the tenant-scoped inbox key and
+notification uniqueness constraint turn that retry into a no-op. Claims use short leases and
+`FOR UPDATE SKIP LOCKED`; failures use deterministic exponential backoff with jitter, stop after
+five attempts, and remain recoverable through a protected, audited replay endpoint. The RabbitMQ
+consumer retries once before routing a persistent failure to a durable failed-message queue.
+
+Cross-workspace access, stale versions, concurrent claims, real broker routing, and duplicate
+delivery are covered by automated tests. Full tracing and exported metrics are planned for the
+production-hardening milestone; the current code emits low-cardinality messaging result counters.
 
 ## Decisions
 
 - [ADR 0001 - modular monolith](adr/0001-modular-monolith.md)
 - [ADR 0002 - tenant isolation](adr/0002-tenant-isolation.md)
-- Outbox delivery and file storage will each receive an ADR when introduced.
+- [ADR 0003 - outbox delivery](adr/0003-outbox-delivery.md)
+- File storage will receive an ADR when introduced.

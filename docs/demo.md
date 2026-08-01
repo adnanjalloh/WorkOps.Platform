@@ -26,19 +26,23 @@ POST /api/v1/projects/{projectId}/work-items
 GET  /api/v1/work-items/{workItemId}
 PATCH /api/v1/work-items/{workItemId}
 POST /api/v1/work-items/{workItemId}/transitions
+GET  /api/v1/audit-events
+GET  /api/v1/notifications
+POST /api/v1/operations/outbox/{messageId}/replay
 ```
 
-Run the Compose stack to use the local identity provider and PostgreSQL. The automated functional
-suite executes the initial golden flow with owner, contributor, viewer, and outsider identities. It
-verifies assignment, labels, transitions, tenant and role boundaries, archive behavior, pagination,
+Run the Compose stack to use the local identity provider, PostgreSQL, and RabbitMQ. The automated
+suite executes the backend golden flow with owner, contributor, viewer, and outsider identities. It
+verifies the atomic transition/audit/outbox transaction, a real broker publish, duplicate-safe
+notification delivery, assignment, labels, transitions, tenant and role boundaries, pagination,
 filtering, and stale-version handling. No hosted demo is claimed yet.
 
-## Planned golden scenario
+## Planned demo script
 
-A deterministic script will expose the already-tested project and work-item flow, then show the
-planned audit and notification result. The existing automated scenario proves that a caller from a
-second workspace cannot infer the work item's existence and that a stale version returns `409
-Conflict`. Audit and notification delivery are the next milestone.
+A deterministic script will expose the already-tested project, work-item, audit, and notification
+flow at the terminal. The automated scenario already proves that a second workspace cannot infer
+the work item's existence, duplicate messages do not duplicate notifications, and a stale version
+returns `409 Conflict`.
 
 The final script will be idempotent, print no tokens or credentials, and include Bash and PowerShell
 entry points.
