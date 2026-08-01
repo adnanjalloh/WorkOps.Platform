@@ -8,6 +8,16 @@ public sealed class InputSanitizer : IInputSanitizer
     public string Apply(string? value, InputProfile profile, string path)
     {
         var submittedLength = value?.Length ?? 0;
+        if (profile == InputProfile.SensitiveNoMutation)
+        {
+            if (value is not { Length: > 0 and <= 4096 })
+            {
+                throw new InputRejectedException(path, profile, submittedLength);
+            }
+
+            return value;
+        }
+
         var normalized = value?.Normalize(NormalizationForm.FormKC).Trim() ?? string.Empty;
 
         var accepted = profile switch
@@ -19,7 +29,6 @@ public sealed class InputSanitizer : IInputSanitizer
             InputProfile.HeaderValue => IsHeaderValue(normalized),
             InputProfile.FileName => IsFileName(normalized),
             InputProfile.MimeType => IsMimeType(normalized),
-            InputProfile.SensitiveNoMutation => normalized.Length is > 0 and <= 4096,
             InputProfile.NoneTrusted => true,
             _ => false,
         };

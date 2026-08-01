@@ -24,8 +24,16 @@ public sealed class ApplicationUser
 
     public DateTimeOffset? UpdatedAt { get; private set; }
 
-    public static ApplicationUser Create(string subject, string displayName, DateTimeOffset createdAt) =>
-        new(Guid.NewGuid(), subject, displayName, createdAt);
+    public static ApplicationUser Create(string subject, string displayName, DateTimeOffset createdAt)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(subject);
+        if (!OidcSubject.IsValid(subject))
+        {
+            throw new ArgumentException("Subject must be a valid OIDC subject.", nameof(subject));
+        }
+
+        return new ApplicationUser(Guid.NewGuid(), subject, displayName, createdAt);
+    }
 
     public void UpdateDisplayName(string displayName, DateTimeOffset updatedAt)
     {

@@ -77,6 +77,78 @@ public sealed class TenantIdentityEndpointTests
     }
 
     [TestMethod]
+    public async Task Invalid_subject_claims_are_rejected_during_authentication()
+    {
+        IReadOnlyList<Claim>[] invalidClaims =
+        [
+            [new Claim("name", "Missing Subject")],
+            [new Claim("sub", string.Empty), new Claim("name", "Empty Subject")],
+            [new Claim("sub", "first"), new Claim("sub", "second"), new Claim("name", "Duplicate Subject")],
+            [new Claim("sub", new string('a', 256)), new Claim("name", "Long Subject")],
+            [new Claim("sub", "non-ascii-é"), new Claim("name", "Non ASCII Subject")],
+        ];
+
+        foreach (var claims in invalidClaims)
+        {
+            using var client = CreateClient();
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+                "Bearer",
+                CreateToken(claims, WorkOpsWebApplicationFactory.Audience));
+
+            using var response = await client.GetAsync(new Uri("/api/v1/me/", UriKind.Relative));
+
+            Assert.AreEqual(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+    }
+
+    [TestMethod]
+    public async Task Valid_subjects_are_preserved_exactly_and_remain_case_sensitive()
+    {
+        string[] subjects =
+        [
+            new string('a', 255),
+            " leading-and-trailing ",
+            "Case-Sensitive",
+            "case-sensitive",
+        ];
+
+        foreach (var subject in subjects)
+        {
+            using var client = CreateAuthorizedClient(subject, "Exact Subject User");
+            using var response = await client.GetAsync(new Uri("/api/v1/me/", UriKind.Relative));
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<WorkOpsDbContext>();
+        var storedSubjects = await dbContext.Users
+            .Where(user => subjects.Contains(user.Subject))
+            .Select(user => user.Subject)
+            .ToArrayAsync();
+
+        CollectionAssert.AreEquivalent(subjects, storedSubjects);
+    }
+
+    [TestMethod]
+    public async Task Invitation_rejects_an_invalid_identity_subject()
+    {
+        using var ownerClient = CreateAuthorizedClient(
+            $"functional|subject-owner-{Guid.NewGuid():N}",
+            "Subject Owner");
+        var workspace = await CreateWorkspaceAsync(ownerClient, "Subject Boundary Team");
+
+        using var response = await ownerClient.PostAsJsonAsync(
+            new Uri($"/api/v1/workspaces/{workspace.Id:D}/invitations", UriKind.Relative),
+            new InviteWorkspaceMemberRequest(
+                new string('a', 256),
+                "Invalid Subject",
+                WorkspaceRole.Viewer.ToString()));
+
+        Assert.AreEqual(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        await AssertProblemCodeAsync(response, "invalid_identity_subject");
+    }
+
+    [TestMethod]
     public async Task Cross_workspace_access_is_hidden_and_capabilities_match_the_membership()
     {
         using var firstClient = CreateAuthorizedClient("functional|owner-a", "Owner A");
@@ -754,15 +826,16 @@ public sealed class TenantIdentityEndpointTests
     }
 
     private static string CreateToken(string subject, string displayName, string audience)
+        => CreateToken(
+            [new Claim("sub", subject), new Claim("name", displayName)],
+            audience);
+
+    private static string CreateToken(IReadOnlyCollection<Claim> claims, string audience)
     {
         var token = new JwtSecurityToken(
             issuer: WorkOpsWebApplicationFactory.Issuer,
             audience: audience,
-            claims:
-            [
-                new Claim("sub", subject),
-                new Claim("name", displayName),
-            ],
+            claims: claims,
             notBefore: DateTime.UtcNow.AddMinutes(-1),
             expires: DateTime.UtcNow.AddMinutes(10),
             signingCredentials: new SigningCredentials(

@@ -10,7 +10,7 @@ internal sealed class ApplicationUserConfiguration : IEntityTypeConfiguration<Ap
     {
         builder.ToTable("identity_users");
         builder.HasKey(user => user.Id);
-        builder.Property(user => user.Subject).HasMaxLength(200).IsRequired();
+        builder.Property(user => user.Subject).HasMaxLength(OidcSubject.MaximumLength).IsRequired();
         builder.Property(user => user.DisplayName).HasMaxLength(120).IsRequired();
         builder.HasIndex(user => user.Subject).IsUnique();
     }

@@ -45,6 +45,19 @@ public sealed class InputSanitizerTests
         Assert.AreEqual("oidc|user@example.org", result);
     }
 
+    [TestMethod]
+    public void Sensitive_no_mutation_preserves_the_exact_value()
+    {
+        const string submitted = " leading-and-trailing ";
+
+        var result = _sanitizer.Apply(
+            submitted,
+            InputProfile.SensitiveNoMutation,
+            "body.subject");
+
+        Assert.AreEqual(submitted, result);
+    }
+
     [DataRow("%wildcard")]
     [DataRow("_wildcard")]
     [DataRow("<script>")]

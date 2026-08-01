@@ -24,7 +24,11 @@ public sealed class WorkspaceMembershipService(
     {
         var current = workspaceContext.Current
             ?? throw new InvalidOperationException("Workspace context is required.");
-        var safeSubject = sanitizer.Apply(subject, InputProfile.Identifier, "body.subject");
+        if (!OidcSubject.IsValid(subject))
+        {
+            throw new RequestValidationException("invalid_identity_subject");
+        }
+
         var safeDisplayName = sanitizer.Apply(
             displayName,
             InputProfile.PlainText,
@@ -37,10 +41,10 @@ public sealed class WorkspaceMembershipService(
         }
 
         var now = timeProvider.GetUtcNow();
-        var user = await users.FindBySubjectAsync(safeSubject, cancellationToken);
+        var user = await users.FindBySubjectAsync(subject, cancellationToken);
         if (user is null)
         {
-            user = ApplicationUser.Create(safeSubject, safeDisplayName, now);
+            user = ApplicationUser.Create(subject, safeDisplayName, now);
             users.Add(user);
         }
         else

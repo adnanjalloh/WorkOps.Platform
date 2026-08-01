@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using WorkOps.Domain.Identity;
 
 namespace WorkOps.Api.Authentication;
 
@@ -44,6 +45,19 @@ internal static class AuthenticationExtensions
                     ClockSkew = TimeSpan.FromSeconds(30),
                     NameClaimType = "name",
                     ValidAlgorithms = allowedAlgorithms,
+                };
+                options.Events = new JwtBearerEvents
+                {
+                    OnTokenValidated = context =>
+                    {
+                        var subjects = context.Principal?.FindAll("sub").ToArray() ?? [];
+                        if (subjects.Length != 1 || !OidcSubject.IsValid(subjects[0].Value))
+                        {
+                            context.Fail("The token must contain exactly one valid subject.");
+                        }
+
+                        return Task.CompletedTask;
+                    },
                 };
             });
 

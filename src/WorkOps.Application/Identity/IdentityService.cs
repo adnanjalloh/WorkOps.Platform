@@ -24,7 +24,12 @@ public sealed class IdentityService(
         CurrentIdentity identity,
         CancellationToken cancellationToken)
     {
-        var subject = sanitizer.Apply(identity.Subject, InputProfile.Identifier, "token.sub");
+        if (!OidcSubject.IsValid(identity.Subject))
+        {
+            throw new InvalidOperationException("The validated identity subject invariant was not satisfied.");
+        }
+
+        var subject = identity.Subject;
         var displayName = sanitizer.Apply(identity.DisplayName, InputProfile.PlainText, "token.name");
         var now = timeProvider.GetUtcNow();
         var user = await users.FindBySubjectAsync(subject, cancellationToken);
