@@ -8,11 +8,17 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using WorkOps.Application.Audit;
+using WorkOps.Application.Messaging;
+using WorkOps.Contracts.Audit;
 using WorkOps.Contracts.Common;
 using WorkOps.Contracts.Identity;
+using WorkOps.Contracts.Notifications;
 using WorkOps.Contracts.Projects;
 using WorkOps.Contracts.Tenancy;
 using WorkOps.Contracts.WorkItems;
+using WorkOps.Domain;
+using WorkOps.Domain.Messaging;
 using WorkOps.Domain.Tenancy;
 using WorkOps.Infrastructure.Persistence;
 
@@ -224,6 +230,96 @@ public sealed class TenantIdentityEndpointTests
         Assert.AreEqual("InProgress", transitioned.Status);
         Assert.AreNotEqual(updated.Version, transitioned.Version);
 
+        Guid outboxMessageId;
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<WorkOpsDbContext>();
+            var transitionAudits = await dbContext.AuditEvents
+                .IgnoreQueryFilters()
+                .Where(auditEvent =>
+                    auditEvent.EntityId == created.Id &&
+                    auditEvent.Action == AuditActions.WorkItemTransitioned)
+                .ToArrayAsync();
+            var outboxMessages = await dbContext.OutboxMessages
+                .IgnoreQueryFilters()
+                .Where(message =>
+                    message.WorkspaceId == WorkspaceId.From(workspace.Id) &&
+                    message.Type == WorkItemStatusChangedMessage.MessageType)
+                .ToArrayAsync();
+
+            Assert.HasCount(1, transitionAudits);
+            Assert.HasCount(1, outboxMessages);
+            Assert.AreEqual(OutboxMessageStatus.Pending, outboxMessages[0].Status);
+            Assert.Contains(created.Id.ToString("D"), outboxMessages[0].PayloadJson, StringComparison.Ordinal);
+            Assert.DoesNotContain("Deliver secure", outboxMessages[0].PayloadJson, StringComparison.Ordinal);
+            outboxMessageId = outboxMessages[0].Id;
+        }
+
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var processor = scope.ServiceProvider.GetRequiredService<OutboxProcessor>();
+            Assert.AreEqual(
+                OutboxProcessResult.Published,
+                await processor.ProcessNextAsync(CancellationToken.None));
+        }
+
+        var published = _factory.Publisher.Messages.Single(message => message.Id == outboxMessageId);
+        bool firstDelivery;
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var handler = scope.ServiceProvider.GetRequiredService<NotificationMessageHandler>();
+            firstDelivery = await handler.HandleAsync(
+                published.Type,
+                published.PayloadJson,
+                CancellationToken.None);
+        }
+
+        bool duplicateDelivery;
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var handler = scope.ServiceProvider.GetRequiredService<NotificationMessageHandler>();
+            duplicateDelivery = await handler.HandleAsync(
+                published.Type,
+                published.PayloadJson,
+                CancellationToken.None);
+        }
+
+        Assert.IsTrue(firstDelivery);
+        Assert.IsFalse(duplicateDelivery);
+
+        using var notificationsResponse = await SendWorkspaceAsync(
+            contributorClient,
+            HttpMethod.Get,
+            "/api/v1/notifications?page=1&pageSize=20",
+            workspace.Id);
+        var notifications = await notificationsResponse.Content
+            .ReadFromJsonAsync<PagedResponse<NotificationResponse>>();
+        Assert.AreEqual(HttpStatusCode.OK, notificationsResponse.StatusCode);
+        Assert.IsNotNull(notifications);
+        Assert.AreEqual(1, notifications.TotalCount);
+        Assert.HasCount(1, notifications.Items);
+        Assert.AreEqual(created.Id, notifications.Items[0].EntityId);
+        Assert.AreEqual("development", notifications.Items[0].Channel);
+
+        using var auditResponse = await SendWorkspaceAsync(
+            ownerClient,
+            HttpMethod.Get,
+            "/api/v1/audit-events?page=1&pageSize=20&action=work_item.transitioned&entityType=work_item",
+            workspace.Id);
+        var auditPage = await auditResponse.Content.ReadFromJsonAsync<PagedResponse<AuditEventResponse>>();
+        Assert.AreEqual(HttpStatusCode.OK, auditResponse.StatusCode);
+        Assert.IsNotNull(auditPage);
+        Assert.AreEqual(1, auditPage.TotalCount);
+        Assert.AreEqual("InProgress", auditPage.Items[0].Metadata["currentStatus"]);
+
+        using var replayProcessed = await SendWorkspaceAsync(
+            ownerClient,
+            HttpMethod.Post,
+            $"/api/v1/operations/outbox/{outboxMessageId:D}/replay",
+            workspace.Id);
+        Assert.AreEqual(HttpStatusCode.Conflict, replayProcessed.StatusCode);
+        await AssertProblemCodeAsync(replayProcessed, "outbox_replay_not_allowed");
+
         using var staleTransition = await SendWorkspaceJsonAsync(
             contributorClient,
             HttpMethod.Post,
@@ -232,6 +328,18 @@ public sealed class TenantIdentityEndpointTests
             new TransitionWorkItemRequest("Blocked", updated.Version));
         Assert.AreEqual(HttpStatusCode.Conflict, staleTransition.StatusCode);
         await AssertProblemCodeAsync(staleTransition, "concurrency_conflict");
+
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<WorkOpsDbContext>();
+            Assert.AreEqual(
+                1,
+                await dbContext.OutboxMessages
+                    .IgnoreQueryFilters()
+                    .CountAsync(message =>
+                        message.WorkspaceId == WorkspaceId.From(workspace.Id) &&
+                        message.Type == WorkItemStatusChangedMessage.MessageType));
+        }
 
         using var outsiderRead = await SendWorkspaceAsync(
             outsiderClient,
@@ -280,6 +388,13 @@ public sealed class TenantIdentityEndpointTests
             workspace.Id,
             new CreateProjectRequest("Forbidden Project", $"forbidden-{suffix}"));
         Assert.AreEqual(HttpStatusCode.Forbidden, viewerWrite.StatusCode);
+
+        using var viewerAudit = await SendWorkspaceAsync(
+            viewerClient,
+            HttpMethod.Get,
+            "/api/v1/audit-events",
+            workspace.Id);
+        Assert.AreEqual(HttpStatusCode.Forbidden, viewerAudit.StatusCode);
 
         using var archive = await SendWorkspaceAsync(
             ownerClient,

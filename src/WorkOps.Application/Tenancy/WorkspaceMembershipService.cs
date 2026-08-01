@@ -1,4 +1,5 @@
 using WorkOps.Application.Abstractions;
+using WorkOps.Application.Audit;
 using WorkOps.Application.Common.Sanitization;
 using WorkOps.Application.Common.Validation;
 using WorkOps.Domain.Identity;
@@ -10,6 +11,7 @@ public sealed class WorkspaceMembershipService(
     IUserStore users,
     IWorkspaceStore workspaces,
     IUnitOfWork unitOfWork,
+    AuditWriter auditWriter,
     IWorkspaceContextAccessor workspaceContext,
     IInputSanitizer sanitizer,
     TimeProvider timeProvider)
@@ -57,6 +59,15 @@ public sealed class WorkspaceMembershipService(
             parsedRole,
             now);
         workspaces.Add(membership);
+        auditWriter.Record(
+            AuditActions.MemberInvited,
+            "workspace_member",
+            user.Id,
+            now,
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["role"] = parsedRole.ToString(),
+            });
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new WorkspaceMemberView(user.Id, user.DisplayName, membership.Role, membership.IsActive);

@@ -32,6 +32,21 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  rabbitmq:
+    image: rabbitmq:4.3.4-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: workops
+      RABBITMQ_DEFAULT_PASS: ${WORKOPS_RABBITMQ_PASSWORD:-local-development-only}
+    ports:
+      - "${WORKOPS_RABBITMQ_PORT:-5672}:5672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    security_opt:
+      - no-new-privileges:true
+
   api:
     image: workops-platform:${WORKOPS_IMAGE_TAG:-local}
     build:
@@ -45,12 +60,20 @@ services:
       Authentication__MetadataAddress: http://identity:8080/realms/workops/.well-known/openid-configuration
       Authentication__RequireHttpsMetadata: "false"
       ConnectionStrings__WorkOps: Host=postgres;Port=5432;Database=workops;Username=workops;Password=${WORKOPS_DB_PASSWORD:-local-development-only};Include Error Detail=false
+      Messaging__Enabled: "true"
+      Messaging__HostName: rabbitmq
+      Messaging__Port: 5672
+      Messaging__VirtualHost: /
+      Messaging__UserName: workops
+      Messaging__Password: ${WORKOPS_RABBITMQ_PASSWORD:-local-development-only}
       Operations__ApplyMigrations: "true"
     depends_on:
       postgres:
         condition: service_healthy
       identity:
         condition: service_started
+      rabbitmq:
+        condition: service_healthy
     ports:
       - "${WORKOPS_HTTP_PORT:-8080}:8080"
     read_only: true

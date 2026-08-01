@@ -2,7 +2,10 @@ using Microsoft.EntityFrameworkCore;
 using WorkOps.Application.Abstractions;
 using WorkOps.Application.Common;
 using WorkOps.Application.Tenancy;
+using WorkOps.Domain.Audit;
 using WorkOps.Domain.Identity;
+using WorkOps.Domain.Messaging;
+using WorkOps.Domain.Notifications;
 using WorkOps.Domain.Projects;
 using WorkOps.Domain.Tenancy;
 using WorkOps.Domain.WorkItems;
@@ -23,6 +26,14 @@ public sealed class WorkOpsDbContext(
 
     public DbSet<WorkItem> WorkItems => Set<WorkItem>();
 
+    public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
+
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+
+    public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
+
+    public DbSet<NotificationDelivery> NotificationDeliveries => Set<NotificationDelivery>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(WorkOpsDbContext).Assembly);
@@ -41,7 +52,23 @@ public sealed class WorkOpsDbContext(
 
         modelBuilder.Entity<WorkItem>().HasQueryFilter(
             workItem => workspaceContext.CurrentWorkspaceId.HasValue &&
-                        workItem.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault());
+                       workItem.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault());
+
+        modelBuilder.Entity<AuditEvent>().HasQueryFilter(
+            auditEvent => workspaceContext.CurrentWorkspaceId.HasValue &&
+                          auditEvent.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault());
+
+        modelBuilder.Entity<OutboxMessage>().HasQueryFilter(
+            message => workspaceContext.CurrentWorkspaceId.HasValue &&
+                       message.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault());
+
+        modelBuilder.Entity<InboxMessage>().HasQueryFilter(
+            message => workspaceContext.CurrentWorkspaceId.HasValue &&
+                       message.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault());
+
+        modelBuilder.Entity<NotificationDelivery>().HasQueryFilter(
+            delivery => workspaceContext.CurrentWorkspaceId.HasValue &&
+                        delivery.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault());
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

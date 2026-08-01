@@ -20,6 +20,8 @@ public sealed class PermissionTests
                 Permissions.ProjectsRead,
                 Permissions.ProjectsWrite,
                 Permissions.AuditRead,
+                Permissions.NotificationsRead,
+                Permissions.OperationsManage,
             },
             permissions.ToArray());
     }
@@ -35,6 +37,7 @@ public sealed class PermissionTests
                 Permissions.WorkspacesRead,
                 Permissions.MembersRead,
                 Permissions.ProjectsRead,
+                Permissions.NotificationsRead,
             },
             permissions.ToArray());
         CollectionAssert.DoesNotContain(permissions.ToArray(), Permissions.ProjectsWrite);

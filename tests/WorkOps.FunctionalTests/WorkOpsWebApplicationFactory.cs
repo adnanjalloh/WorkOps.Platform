@@ -10,6 +10,7 @@ using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using Testcontainers.PostgreSql;
+using WorkOps.Application.Abstractions;
 using WorkOps.Infrastructure;
 using WorkOps.Infrastructure.Persistence;
 
@@ -25,6 +26,8 @@ internal sealed class WorkOpsWebApplicationFactory : WebApplicationFactory<Progr
 
     private readonly PostgreSqlContainer _database = new PostgreSqlBuilder("postgres:18.4-alpine")
         .Build();
+
+    public RecordingMessagePublisher Publisher { get; } = new();
 
     public async Task InitializeAsync()
     {
@@ -54,6 +57,9 @@ internal sealed class WorkOpsWebApplicationFactory : WebApplicationFactory<Progr
             services.RemoveAll<DbContextOptions<WorkOpsDbContext>>();
             services.AddDbContext<WorkOpsDbContext>(
                 options => options.UseNpgsql(_database.GetConnectionString()));
+            services.RemoveAll<IMessagePublisher>();
+            services.AddSingleton(Publisher);
+            services.AddSingleton<IMessagePublisher>(Publisher);
 
             services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
             {

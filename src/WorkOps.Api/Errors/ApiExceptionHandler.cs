@@ -5,6 +5,7 @@ using WorkOps.Application.Common.Validation;
 using WorkOps.Application.Projects;
 using WorkOps.Application.Tenancy;
 using WorkOps.Application.WorkItems;
+using WorkOps.Domain.Messaging;
 using WorkOps.Domain.WorkItems;
 
 namespace WorkOps.Api.Errors;
@@ -99,6 +100,15 @@ internal sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) :
                     StatusCodes.Status422UnprocessableEntity,
                     "Assignee is not an active workspace member",
                     "invalid_assignee",
+                    cancellationToken);
+                return true;
+
+            case OutboxReplayNotAllowedException:
+                await WriteProblemAsync(
+                    httpContext,
+                    StatusCodes.Status409Conflict,
+                    "Outbox message cannot be replayed",
+                    "outbox_replay_not_allowed",
                     cancellationToken);
                 return true;
 

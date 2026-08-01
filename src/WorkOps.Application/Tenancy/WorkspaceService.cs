@@ -1,4 +1,5 @@
 using WorkOps.Application.Abstractions;
+using WorkOps.Application.Audit;
 using WorkOps.Application.Common.Sanitization;
 using WorkOps.Application.Identity;
 using WorkOps.Domain.Tenancy;
@@ -9,6 +10,7 @@ public sealed class WorkspaceService(
     IdentityService identityService,
     IWorkspaceStore workspaces,
     IUnitOfWork unitOfWork,
+    AuditWriter auditWriter,
     IInputSanitizer sanitizer,
     TimeProvider timeProvider)
 {
@@ -33,6 +35,17 @@ public sealed class WorkspaceService(
 
         workspaces.Add(workspace);
         workspaces.Add(membership);
+        auditWriter.RecordFor(
+            workspace.Id,
+            owner.Id,
+            AuditActions.WorkspaceCreated,
+            "workspace",
+            workspace.Id.Value,
+            now,
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["status"] = workspace.Status.ToString(),
+            });
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return workspace;
     }

@@ -1,6 +1,9 @@
 using System.Reflection;
 using WorkOps.Contracts.Common;
+using WorkOps.Domain.Audit;
 using WorkOps.Domain.Common;
+using WorkOps.Domain.Messaging;
+using WorkOps.Domain.Notifications;
 using WorkOps.Domain.Projects;
 using WorkOps.Domain.Tenancy;
 using WorkOps.Domain.WorkItems;
@@ -54,6 +57,10 @@ public sealed class DependencyRuleTests
             typeof(WorkspaceMembership),
             typeof(Project),
             typeof(WorkItem),
+            typeof(AuditEvent),
+            typeof(OutboxMessage),
+            typeof(InboxMessage),
+            typeof(NotificationDelivery),
         };
 
         Assert.IsTrue(tenantOwnedTypes.All(typeof(IWorkspaceOwned).IsAssignableFrom));

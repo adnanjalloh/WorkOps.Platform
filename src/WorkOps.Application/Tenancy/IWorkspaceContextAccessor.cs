@@ -9,4 +9,6 @@ public interface IWorkspaceContextAccessor
     WorkspaceId? CurrentWorkspaceId { get; }
 
     void Establish(WorkspaceContext context);
+
+    void EstablishBackground(WorkspaceId workspaceId);
 }

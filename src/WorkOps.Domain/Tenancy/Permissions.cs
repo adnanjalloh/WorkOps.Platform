@@ -9,6 +9,8 @@ public static class Permissions
     public const string ProjectsRead = "projects.read";
     public const string ProjectsWrite = "projects.write";
     public const string AuditRead = "audit.read";
+    public const string NotificationsRead = "notifications.read";
+    public const string OperationsManage = "operations.manage";
 
     public static IReadOnlySet<string> ForRole(WorkspaceRole role) => role switch
     {
@@ -30,6 +32,8 @@ public static class Permissions
         ProjectsRead,
         ProjectsWrite,
         AuditRead,
+        NotificationsRead,
+        OperationsManage,
     };
 
     private static readonly IReadOnlySet<string> Administrator = new HashSet<string>(StringComparer.Ordinal)
@@ -40,6 +44,8 @@ public static class Permissions
         ProjectsRead,
         ProjectsWrite,
         AuditRead,
+        NotificationsRead,
+        OperationsManage,
     };
 
     private static readonly IReadOnlySet<string> Contributor = new HashSet<string>(StringComparer.Ordinal)
@@ -48,6 +54,7 @@ public static class Permissions
         MembersRead,
         ProjectsRead,
         ProjectsWrite,
+        NotificationsRead,
     };
 
     private static readonly IReadOnlySet<string> Viewer = new HashSet<string>(StringComparer.Ordinal)
@@ -55,5 +62,6 @@ public static class Permissions
         WorkspacesRead,
         MembersRead,
         ProjectsRead,
+        NotificationsRead,
     };
 }

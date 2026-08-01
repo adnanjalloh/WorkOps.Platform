@@ -3,8 +3,10 @@ using WorkOps.Api.Authentication;
 using WorkOps.Api.Authorization;
 using WorkOps.Api.Endpoints;
 using WorkOps.Api.Errors;
+using WorkOps.Api.Operations;
 using WorkOps.Api.Tenancy;
 using WorkOps.Application;
+using WorkOps.Application.Abstractions;
 using WorkOps.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,6 +14,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 1_048_576);
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICorrelationContext, HttpCorrelationContext>();
 builder.Services.AddHealthChecks();
 builder.Services.AddWorkOpsApplication();
 builder.Services.AddWorkOpsInfrastructure(builder.Configuration);
@@ -36,6 +40,9 @@ app.MapIdentityEndpoints();
 app.MapWorkspaceEndpoints();
 app.MapProjectEndpoints();
 app.MapWorkItemEndpoints();
+app.MapAuditEndpoints();
+app.MapNotificationEndpoints();
+app.MapOperationsEndpoints();
 
 if (builder.Configuration.GetValue("Operations:ApplyMigrations", false))
 {

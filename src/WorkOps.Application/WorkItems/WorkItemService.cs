@@ -1,8 +1,12 @@
 using WorkOps.Application.Abstractions;
+using WorkOps.Application.Audit;
 using WorkOps.Application.Common;
 using WorkOps.Application.Common.Sanitization;
 using WorkOps.Application.Common.Validation;
+using WorkOps.Application.Messaging;
 using WorkOps.Application.Projects;
+using WorkOps.Application.Tenancy;
+using WorkOps.Domain.Messaging;
 using WorkOps.Domain.Projects;
 using WorkOps.Domain.WorkItems;
 
@@ -12,7 +16,11 @@ public sealed class WorkItemService(
     IProjectStore projects,
     IWorkItemStore workItems,
     IWorkspaceStore workspaces,
+    IOutboxStore outbox,
     IUnitOfWork unitOfWork,
+    AuditWriter auditWriter,
+    IWorkspaceContextAccessor workspaceContext,
+    ICorrelationContext correlationContext,
     IInputSanitizer sanitizer,
     TimeProvider timeProvider)
 {
@@ -49,6 +57,16 @@ public sealed class WorkItemService(
             safeLabels,
             timeProvider.GetUtcNow());
         workItems.Add(workItem);
+        auditWriter.Record(
+            AuditActions.WorkItemCreated,
+            "work_item",
+            workItem.Id,
+            workItem.CreatedAt,
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["priority"] = workItem.Priority.ToString(),
+                ["status"] = workItem.Status.ToString(),
+            });
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return await workItems.GetAsync(workItem.Id, cancellationToken)
@@ -79,12 +97,31 @@ public sealed class WorkItemService(
         var safeLabels = NormalizeLabels(labels);
         await EnsureValidAssigneeAsync(assigneeUserId, cancellationToken);
 
+        var changedFields = GetChangedFields(
+            workItem,
+            safeTitle,
+            parsedPriority,
+            assigneeUserId,
+            safeLabels);
+        var now = timeProvider.GetUtcNow();
+
         workItem.UpdateDetails(
             safeTitle,
             parsedPriority,
             assigneeUserId,
             safeLabels,
-            timeProvider.GetUtcNow());
+            now);
+        auditWriter.Record(
+            AuditActions.WorkItemUpdated,
+            "work_item",
+            workItem.Id,
+            now,
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["fields"] = changedFields.Length == 0
+                    ? "none"
+                    : string.Join(',', changedFields),
+            });
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return await workItems.GetAsync(workItem.Id, cancellationToken);
     }
@@ -112,7 +149,39 @@ public sealed class WorkItemService(
             throw new RequestValidationException("invalid_work_item_status");
         }
 
-        workItem.TransitionTo(parsedTarget, timeProvider.GetUtcNow());
+        var current = workspaceContext.Current
+            ?? throw new InvalidOperationException("An interactive workspace context is required.");
+        var previousStatus = workItem.Status;
+        var now = timeProvider.GetUtcNow();
+        workItem.TransitionTo(parsedTarget, now);
+        auditWriter.Record(
+            AuditActions.WorkItemTransitioned,
+            "work_item",
+            workItem.Id,
+            now,
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["currentStatus"] = parsedTarget.ToString(),
+                ["previousStatus"] = previousStatus.ToString(),
+            });
+
+        var messageId = Guid.NewGuid();
+        var message = new WorkItemStatusChangedMessage(
+            messageId,
+            current.WorkspaceId.Value,
+            current.UserId,
+            workItem.AssigneeUserId ?? current.UserId,
+            workItem.Id,
+            previousStatus.ToString(),
+            parsedTarget.ToString(),
+            now,
+            correlationContext.CorrelationId);
+        outbox.Add(OutboxMessage.Create(
+            messageId,
+            current.WorkspaceId,
+            WorkItemStatusChangedMessage.MessageType,
+            MessagePayload.Serialize(message),
+            now));
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return await workItems.GetAsync(workItem.Id, cancellationToken);
     }
@@ -161,6 +230,37 @@ public sealed class WorkItemService(
         {
             throw new InvalidAssigneeException();
         }
+    }
+
+    private static string[] GetChangedFields(
+        WorkItem workItem,
+        string title,
+        WorkItemPriority priority,
+        Guid? assigneeUserId,
+        IReadOnlyList<string> labels)
+    {
+        var changedFields = new List<string>();
+        if (!string.Equals(workItem.Title, title, StringComparison.Ordinal))
+        {
+            changedFields.Add("title");
+        }
+
+        if (workItem.Priority != priority)
+        {
+            changedFields.Add("priority");
+        }
+
+        if (workItem.AssigneeUserId != assigneeUserId)
+        {
+            changedFields.Add("assignee");
+        }
+
+        if (!workItem.Labels.SequenceEqual(labels, StringComparer.Ordinal))
+        {
+            changedFields.Add("labels");
+        }
+
+        return [.. changedFields];
     }
 
     private void EnsureExpectedVersion(WorkItem workItem, string expectedVersion)

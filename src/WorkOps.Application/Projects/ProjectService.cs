@@ -1,4 +1,5 @@
 using WorkOps.Application.Abstractions;
+using WorkOps.Application.Audit;
 using WorkOps.Application.Common.Pagination;
 using WorkOps.Application.Common.Sanitization;
 using WorkOps.Application.Common.Validation;
@@ -10,6 +11,7 @@ namespace WorkOps.Application.Projects;
 public sealed class ProjectService(
     IProjectStore projects,
     IUnitOfWork unitOfWork,
+    AuditWriter auditWriter,
     IWorkspaceContextAccessor workspaceContext,
     IInputSanitizer sanitizer,
     TimeProvider timeProvider)
@@ -35,6 +37,15 @@ public sealed class ProjectService(
             safeKey,
             timeProvider.GetUtcNow());
         projects.Add(project);
+        auditWriter.Record(
+            AuditActions.ProjectCreated,
+            "project",
+            project.Id,
+            project.CreatedAt,
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["status"] = project.Status.ToString(),
+            });
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return await projects.GetAsync(project.Id, cancellationToken)
@@ -83,8 +94,19 @@ public sealed class ProjectService(
             return false;
         }
 
-        if (project.Archive(timeProvider.GetUtcNow()))
+        var now = timeProvider.GetUtcNow();
+        if (project.Archive(now))
         {
+            auditWriter.Record(
+                AuditActions.ProjectArchived,
+                "project",
+                project.Id,
+                now,
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["currentStatus"] = project.Status.ToString(),
+                    ["previousStatus"] = ProjectStatus.Active.ToString(),
+                });
             await unitOfWork.SaveChangesAsync(cancellationToken);
         }
 

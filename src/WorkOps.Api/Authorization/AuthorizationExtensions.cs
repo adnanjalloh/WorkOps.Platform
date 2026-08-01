@@ -21,6 +21,8 @@ internal static class AuthorizationExtensions
             AddPermissionPolicy(options, Permissions.ProjectsRead);
             AddPermissionPolicy(options, Permissions.ProjectsWrite);
             AddPermissionPolicy(options, Permissions.AuditRead);
+            AddPermissionPolicy(options, Permissions.NotificationsRead);
+            AddPermissionPolicy(options, Permissions.OperationsManage);
         });
         services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
         return services;

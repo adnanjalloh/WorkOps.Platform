@@ -22,4 +22,18 @@ public sealed class WorkspaceContextAccessorTests
         Assert.AreSame(context, accessor.Current);
         Assert.ThrowsExactly<InvalidOperationException>(() => accessor.Establish(context));
     }
+
+    [TestMethod]
+    public void Background_context_sets_only_the_tenant_boundary()
+    {
+        var accessor = new WorkspaceContextAccessor();
+        var workspaceId = WorkspaceId.New();
+
+        accessor.EstablishBackground(workspaceId);
+
+        Assert.AreEqual(workspaceId, accessor.CurrentWorkspaceId);
+        Assert.IsNull(accessor.Current);
+        Assert.ThrowsExactly<InvalidOperationException>(
+            () => accessor.EstablishBackground(WorkspaceId.New()));
+    }
 }
