@@ -1,0 +1,16 @@
+.git
+.github
+.env
+.env.*
+**/bin
+**/obj
+TestResults
+coverage
+docs
+tests
+*.pem
+*.key
+*.pfx
+*.p12
+*.tfstate
+*.tfplan

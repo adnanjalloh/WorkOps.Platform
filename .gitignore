@@ -1,0 +1,43 @@
+# Local secrets and environment files
+.env
+.env.*
+!.env.example
+**/appsettings.*.local.json
+**/secrets.json
+
+# Keys and certificates
+*.pem
+*.key
+*.pfx
+*.p12
+*.jks
+
+# Terraform generated/sensitive files
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+terraform.tfvars
+terraform.tfvars.json
+crash.log
+
+# .NET/IDE output
+**/bin/
+**/obj/
+.vs/
+.idea/
+*.user
+*.suo
+TestResults/
+coverage/
+coverage.*
+
+# Logs and local data
+*.log
+logs/
+.local/
+artifacts/
+
+# OS files
+.DS_Store
+Thumbs.db
