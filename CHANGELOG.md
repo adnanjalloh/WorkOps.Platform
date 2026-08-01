@@ -54,3 +54,4 @@ first release.
   backchannel discovery.
 - Verified Bash and PowerShell golden-scenario clients plus a named-request HTTP collection.
 - StackExchange.Redis 3.1 with the current stable client improvements.
+- MIT license for the independently written portfolio source.

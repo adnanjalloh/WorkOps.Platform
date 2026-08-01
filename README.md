@@ -227,5 +227,5 @@ model.
 - [ ] Add artifact signing and provenance attestation when a public release is intentionally made
 
 See [CHANGELOG](CHANGELOG.md), [CONTRIBUTING](CONTRIBUTING.md), [SECURITY](SECURITY.md), and the
-[repository settings checklist](docs/github-settings.md). A license must be selected deliberately
-before public release.
+[repository settings checklist](docs/github-settings.md). This project is available under the
+[MIT License](LICENSE).
