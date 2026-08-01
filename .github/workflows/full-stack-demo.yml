@@ -1,0 +1,65 @@
+name: Full stack demo
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "41 3 * * 3"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: full-stack-demo
+  cancel-in-progress: false
+
+jobs:
+  exercise:
+    name: Exercise Compose golden scenario
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate local Compose boundary
+        run: scripts/check-compose-security.sh
+
+      - name: Run clean full-stack scenario
+        id: demo
+        shell: bash
+        run: |
+          mkdir -p artifacts/full-stack-demo
+          set +e
+          ./scripts/demo.sh --start 2>&1 | tee artifacts/full-stack-demo/demo.log
+          exit_code=${PIPESTATUS[0]}
+          set -e
+
+          if [[ "$exit_code" -eq 0 ]]; then
+            status=passed
+          else
+            status=failed
+          fi
+
+          jq -n \
+            --arg status "$status" \
+            --arg commit "$GITHUB_SHA" \
+            --arg completedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{status: $status, commit: $commit, completedAt: $completedAt, scenario: "compose-golden-flow"}' \
+            > artifacts/full-stack-demo/summary.json
+          exit "$exit_code"
+
+      - name: Upload sanitized scenario evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: full-stack-demo-${{ github.sha }}
+          path: artifacts/full-stack-demo
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Stop local stack
+        if: always()
+        run: docker compose down --volumes --remove-orphans

@@ -11,6 +11,7 @@ first release.
 - Exact, case-sensitive OIDC subject validation and storage with full-host boundary tests.
 - Save-time tenant ownership enforcement for request, background, and provisioning writes.
 - Model-driven query-filter coverage plus cross-workspace insert, update, delete, and mutation tests.
+- Scheduled/manual full-Compose golden-scenario verification with retained sanitized evidence.
 - Clean-room .NET 10 modular-monolith foundation.
 - Health endpoints and initial functional test.
 - Unit, integration-smoke, functional, and architecture test projects.

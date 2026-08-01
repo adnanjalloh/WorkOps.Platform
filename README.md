@@ -184,7 +184,8 @@ dotnet test -c Release --no-build --logger "trx" --collect:"XPlat Code Coverage"
 The 88 tests comprise 51 unit, 13 PostgreSQL/Redis/RabbitMQ/storage integration, 18 full-host
 functional, and 6 architecture tests. The dated local result is 90.7% line and 49.7% branch
 coverage. CI merges coverage, publishes HTML/Cobertura/Markdown evidence, and enforces the 70% line
-/ 35% branch floors. See [testing](docs/testing.md).
+/ 35% branch floors. A scheduled/manual workflow runs the complete Compose golden scenario and
+retains sanitized evidence. See [testing](docs/testing.md).
 
 ## Observability and operations
 

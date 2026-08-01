@@ -22,7 +22,8 @@ before making the repository public or creating the first release.
 - [ ] Require conversation resolution and block force pushes and branch deletion.
 - [ ] Require linear history and prevent bypass except for a documented emergency maintainer path.
 - [ ] After the first hosted branch and validation-PR runs, select the actual displayed CI, CodeQL,
-  and dependency-review check names in the ruleset; do not guess or hard-code unseen contexts.
+  and dependency-review check names in the ruleset; do not guess or hard-code unseen contexts. Keep
+  the scheduled/manual full-stack demo outside the pull-request gate unless its runtime is acceptable.
 - [ ] Require the branch to be current before merge.
 
 ## Releases

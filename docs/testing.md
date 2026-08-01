@@ -37,8 +37,9 @@ specific collector backend, reverse-proxy configuration, or production capacity.
 
 Local Bash and PowerShell demo runs reported the idempotent project replay, viewer `403`, stale
 `409`, outsider `404`, asynchronous audit/notification evidence, and a non-duplicating repeat path.
-Hosted full-Compose verification is still pending. These scripts are reviewer tools, not substitutes
-for the automated suites.
+The scheduled/manual `Full stack demo` workflow is configured to run the Bash scenario from a clean
+host and retain its sanitized log and JSON summary; hosted evidence remains pending the first push.
+These scripts are reviewer tools, not substitutes for the automated suites.
 
 Local verification on 2026-08-01 reported 90.7% line coverage and 49.7% branch coverage, with all 88
 tests passing. Hosted GitHub Actions evidence is pending the private first push. CI merges collector
