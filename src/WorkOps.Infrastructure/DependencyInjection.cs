@@ -2,8 +2,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using StackExchange.Redis;
 using WorkOps.Application.Abstractions;
 using WorkOps.Infrastructure.Audit;
+using WorkOps.Infrastructure.Features;
+using WorkOps.Infrastructure.Files;
 using WorkOps.Infrastructure.Health;
 using WorkOps.Infrastructure.Identity;
 using WorkOps.Infrastructure.Messaging;
@@ -37,6 +40,20 @@ public static class DependencyInjection
         services.AddScoped<IAuditStore, AuditStore>();
         services.AddScoped<IOutboxStore, OutboxStore>();
         services.AddScoped<INotificationStore, NotificationStore>();
+        services.AddScoped<IWorkspaceSubscriptionStore, WorkspaceSubscriptionStore>();
+        services.AddScoped<IAttachmentStore, AttachmentStore>();
+        var fileRoot = configuration["Files:RootPath"]
+            ?? Path.Combine(Path.GetTempPath(), "workops-attachments");
+        services.AddSingleton<IFileStorage>(new LocalFileStorage(fileRoot));
+        if (bool.TryParse(configuration["Files:DevelopmentScannerEnabled"], out var scannerEnabled) &&
+            scannerEnabled)
+        {
+            services.AddSingleton<IFileScanner, DevelopmentFileScanner>();
+        }
+        else
+        {
+            services.AddSingleton<IFileScanner, RejectingFileScanner>();
+        }
         services.AddHealthChecks().AddCheck<DatabaseHealthCheck>(
             "postgresql",
             tags: ["ready"]);
@@ -52,6 +69,25 @@ public static class DependencyInjection
             services.AddHostedService<RabbitMqNotificationConsumer>();
             services.AddHealthChecks().AddCheck<RabbitMqHealthCheck>(
                 "rabbitmq",
+                tags: ["ready"]);
+        }
+
+        if (bool.TryParse(configuration["Cache:Enabled"], out var cacheEnabled) && cacheEnabled)
+        {
+            var redisConnectionString = configuration.GetConnectionString("Redis");
+            if (string.IsNullOrWhiteSpace(redisConnectionString))
+            {
+                throw new InvalidOperationException("ConnectionStrings:Redis must be configured.");
+            }
+
+            var redisOptions = ConfigurationOptions.Parse(redisConnectionString);
+            redisOptions.AbortOnConnectFail = false;
+            services.AddSingleton<IConnectionMultiplexer>(
+                _ => ConnectionMultiplexer.Connect(redisOptions));
+            services.RemoveAll<IFeatureCache>();
+            services.AddSingleton<IFeatureCache, RedisFeatureCache>();
+            services.AddHealthChecks().AddCheck<RedisHealthCheck>(
+                "redis",
                 tags: ["ready"]);
         }
 

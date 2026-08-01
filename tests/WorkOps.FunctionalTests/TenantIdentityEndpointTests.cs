@@ -12,6 +12,8 @@ using WorkOps.Application.Audit;
 using WorkOps.Application.Messaging;
 using WorkOps.Contracts.Audit;
 using WorkOps.Contracts.Common;
+using WorkOps.Contracts.Features;
+using WorkOps.Contracts.Files;
 using WorkOps.Contracts.Identity;
 using WorkOps.Contracts.Notifications;
 using WorkOps.Contracts.Projects;
@@ -413,6 +415,160 @@ public sealed class TenantIdentityEndpointTests
         await AssertProblemCodeAsync(createAfterArchive, "project_archived");
     }
 
+    [TestMethod]
+    public async Task Starter_plan_enforces_project_limit_and_plan_changes_invalidate_features()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var viewerSubject = $"functional|limit-viewer-{suffix}";
+        using var ownerClient = CreateAuthorizedClient($"functional|limit-owner-{suffix}", "Limit Owner");
+        using var viewerClient = CreateAuthorizedClient(viewerSubject, "Limit Viewer");
+        var workspace = await CreateWorkspaceAsync(ownerClient, "Limited Workspace");
+        await InviteMemberAsync(
+            ownerClient,
+            workspace.Id,
+            viewerSubject,
+            "Limit Viewer",
+            WorkspaceRole.Viewer);
+        var firstProject = await CreateProjectAsync(
+            ownerClient,
+            workspace.Id,
+            "First Project",
+            $"first-{suffix}");
+        await CreateProjectAsync(
+            ownerClient,
+            workspace.Id,
+            "Second Project",
+            $"second-{suffix}");
+
+        using var limitReached = await SendWorkspaceJsonAsync(
+            ownerClient,
+            HttpMethod.Post,
+            "/api/v1/projects/",
+            workspace.Id,
+            new CreateProjectRequest("Third Project", $"third-{suffix}"));
+        Assert.AreEqual(HttpStatusCode.Conflict, limitReached.StatusCode);
+        await AssertProblemCodeAsync(limitReached, "feature_limit_exceeded");
+
+        var starterFeatures = await GetFeaturesAsync(ownerClient, workspace.Id);
+        Assert.AreEqual("Starter", starterFeatures.Plan);
+        Assert.AreEqual(2, starterFeatures.MaximumActiveProjects);
+        Assert.AreEqual(2, starterFeatures.ActiveProjectCount);
+
+        using var viewerPlanChange = await viewerClient.PutAsJsonAsync(
+            new Uri($"/api/v1/workspaces/{workspace.Id:D}/plan", UriKind.Relative),
+            new UpdateWorkspacePlanRequest("Team"));
+        Assert.AreEqual(HttpStatusCode.Forbidden, viewerPlanChange.StatusCode);
+
+        using var planChange = await ownerClient.PutAsJsonAsync(
+            new Uri($"/api/v1/workspaces/{workspace.Id:D}/plan", UriKind.Relative),
+            new UpdateWorkspacePlanRequest("Team"));
+        var teamFeatures = await planChange.Content.ReadFromJsonAsync<FeatureEntitlementsResponse>();
+        Assert.AreEqual(HttpStatusCode.OK, planChange.StatusCode);
+        Assert.IsNotNull(teamFeatures);
+        Assert.AreEqual("Team", teamFeatures.Plan);
+        Assert.AreEqual(20, teamFeatures.MaximumActiveProjects);
+
+        await CreateProjectAsync(
+            ownerClient,
+            workspace.Id,
+            "Third Project",
+            $"third-{suffix}");
+        using var archive = await SendWorkspaceAsync(
+            ownerClient,
+            HttpMethod.Post,
+            $"/api/v1/projects/{firstProject.Id:D}/archive",
+            workspace.Id);
+        Assert.AreEqual(HttpStatusCode.NoContent, archive.StatusCode);
+
+        var afterArchive = await GetFeaturesAsync(ownerClient, workspace.Id);
+        Assert.AreEqual(2, afterArchive.ActiveProjectCount);
+    }
+
+    [TestMethod]
+    public async Task Attachment_upload_validates_content_and_downloads_only_within_tenant()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        using var ownerClient = CreateAuthorizedClient($"functional|file-owner-{suffix}", "File Owner");
+        using var outsiderClient = CreateAuthorizedClient(
+            $"functional|file-outsider-{suffix}",
+            "File Outsider");
+        var workspace = await CreateWorkspaceAsync(ownerClient, "File Workspace");
+        var outsiderWorkspace = await CreateWorkspaceAsync(outsiderClient, "Other File Workspace");
+        var owner = await GetMeAsync(ownerClient);
+        var project = await CreateProjectAsync(
+            ownerClient,
+            workspace.Id,
+            "File Project",
+            $"files-{suffix}");
+        var workItem = await CreateWorkItemAsync(
+            ownerClient,
+            workspace.Id,
+            project.Id,
+            owner.UserId,
+            "Store safe evidence");
+        var png = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x01, 0x02 };
+
+        using var upload = await SendWorkspaceFileAsync(
+            ownerClient,
+            $"/api/v1/work-items/{workItem.Id:D}/attachments",
+            workspace.Id,
+            "evidence.png",
+            "image/png",
+            png);
+        var attachment = await upload.Content.ReadFromJsonAsync<AttachmentResponse>();
+        Assert.AreEqual(HttpStatusCode.Created, upload.StatusCode);
+        Assert.IsNotNull(attachment);
+        Assert.AreEqual("evidence.png", attachment.FileName);
+        Assert.AreEqual(png.Length, attachment.Size);
+
+        using var download = await SendWorkspaceAsync(
+            ownerClient,
+            HttpMethod.Get,
+            $"/api/v1/attachments/{attachment.Id:D}",
+            workspace.Id);
+        Assert.AreEqual(HttpStatusCode.OK, download.StatusCode);
+        Assert.AreEqual("nosniff", download.Headers.GetValues("X-Content-Type-Options").Single());
+        Assert.AreEqual("image/png", download.Content.Headers.ContentType?.MediaType);
+        CollectionAssert.AreEqual(png, await download.Content.ReadAsByteArrayAsync());
+
+        using var outsiderDownload = await SendWorkspaceAsync(
+            outsiderClient,
+            HttpMethod.Get,
+            $"/api/v1/attachments/{attachment.Id:D}",
+            outsiderWorkspace.Id);
+        Assert.AreEqual(HttpStatusCode.NotFound, outsiderDownload.StatusCode);
+
+        using var mismatch = await SendWorkspaceFileAsync(
+            ownerClient,
+            $"/api/v1/work-items/{workItem.Id:D}/attachments",
+            workspace.Id,
+            "disguised.png",
+            "image/png",
+            "%PDF-1.7"u8.ToArray());
+        Assert.AreEqual(HttpStatusCode.UnprocessableEntity, mismatch.StatusCode);
+        await AssertProblemCodeAsync(mismatch, "invalid_attachment_type");
+
+        using var pathTraversal = await SendWorkspaceFileAsync(
+            ownerClient,
+            $"/api/v1/work-items/{workItem.Id:D}/attachments",
+            workspace.Id,
+            "../escape.txt",
+            "text/plain",
+            "safe"u8.ToArray());
+        Assert.AreEqual(HttpStatusCode.UnprocessableEntity, pathTraversal.StatusCode);
+        await AssertProblemCodeAsync(pathTraversal, "input_rejected");
+
+        using var oversized = await SendWorkspaceFileAsync(
+            ownerClient,
+            $"/api/v1/work-items/{workItem.Id:D}/attachments",
+            workspace.Id,
+            "large.txt",
+            "text/plain",
+            new byte[524_289]);
+        Assert.AreEqual(HttpStatusCode.UnprocessableEntity, oversized.StatusCode);
+        await AssertProblemCodeAsync(oversized, "invalid_attachment_size");
+    }
+
     private static HttpClient CreateClient() => _factory.CreateClient(
         new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
@@ -524,6 +680,42 @@ public sealed class TenantIdentityEndpointTests
         Assert.AreEqual(HttpStatusCode.Created, response.StatusCode);
         Assert.IsNotNull(workItem);
         return workItem;
+    }
+
+    private static async Task<FeatureEntitlementsResponse> GetFeaturesAsync(
+        HttpClient client,
+        Guid workspaceId)
+    {
+        using var response = await SendWorkspaceAsync(
+            client,
+            HttpMethod.Get,
+            "/api/v1/features",
+            workspaceId);
+        var features = await response.Content.ReadFromJsonAsync<FeatureEntitlementsResponse>();
+
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        Assert.IsNotNull(features);
+        return features;
+    }
+
+    private static async Task<HttpResponseMessage> SendWorkspaceFileAsync(
+        HttpClient client,
+        string path,
+        Guid workspaceId,
+        string fileName,
+        string contentType,
+        byte[] content)
+    {
+        using var file = new ByteArrayContent(content);
+        file.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+        using var multipart = new MultipartFormDataContent();
+        multipart.Add(file, "file", fileName);
+        using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(path, UriKind.Relative))
+        {
+            Content = multipart,
+        };
+        request.Headers.Add("X-Workspace-Id", workspaceId.ToString("D"));
+        return await client.SendAsync(request);
     }
 
     private static Task<HttpResponseMessage> SendWorkspaceAsync(

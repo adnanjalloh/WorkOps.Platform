@@ -7,6 +7,8 @@ public enum InputProfile
     Identifier,
     KeyPath,
     HeaderValue,
+    FileName,
+    MimeType,
     SensitiveNoMutation,
     NoneTrusted,
 }

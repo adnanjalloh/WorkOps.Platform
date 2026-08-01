@@ -3,6 +3,7 @@ using WorkOps.Application.Audit;
 using WorkOps.Application.Common.Pagination;
 using WorkOps.Application.Common.Sanitization;
 using WorkOps.Application.Common.Validation;
+using WorkOps.Application.Features;
 using WorkOps.Application.Tenancy;
 using WorkOps.Domain.Projects;
 
@@ -12,6 +13,7 @@ public sealed class ProjectService(
     IProjectStore projects,
     IUnitOfWork unitOfWork,
     AuditWriter auditWriter,
+    FeatureService features,
     IWorkspaceContextAccessor workspaceContext,
     IInputSanitizer sanitizer,
     TimeProvider timeProvider)
@@ -31,11 +33,13 @@ public sealed class ProjectService(
             throw new DuplicateProjectKeyException();
         }
 
+        var now = timeProvider.GetUtcNow();
+        await features.ReserveProjectSlotAsync(cancellationToken);
         var project = Project.Create(
             current.WorkspaceId,
             safeName,
             safeKey,
-            timeProvider.GetUtcNow());
+            now);
         projects.Add(project);
         auditWriter.Record(
             AuditActions.ProjectCreated,
@@ -47,6 +51,7 @@ public sealed class ProjectService(
                 ["status"] = project.Status.ToString(),
             });
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await features.InvalidateAsync(cancellationToken);
 
         return await projects.GetAsync(project.Id, cancellationToken)
             ?? throw new InvalidOperationException("Created project could not be read.");
@@ -97,6 +102,7 @@ public sealed class ProjectService(
         var now = timeProvider.GetUtcNow();
         if (project.Archive(now))
         {
+            await features.ReleaseProjectSlotAsync(cancellationToken);
             auditWriter.Record(
                 AuditActions.ProjectArchived,
                 "project",
@@ -108,6 +114,7 @@ public sealed class ProjectService(
                     ["previousStatus"] = ProjectStatus.Active.ToString(),
                 });
             await unitOfWork.SaveChangesAsync(cancellationToken);
+            await features.InvalidateAsync(cancellationToken);
         }
 
         return true;

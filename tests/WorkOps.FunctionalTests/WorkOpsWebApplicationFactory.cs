@@ -26,6 +26,9 @@ internal sealed class WorkOpsWebApplicationFactory : WebApplicationFactory<Progr
 
     private readonly PostgreSqlContainer _database = new PostgreSqlBuilder("postgres:18.4-alpine")
         .Build();
+    private readonly string _fileRoot = Path.Combine(
+        Path.GetTempPath(),
+        $"workops-functional-{Guid.NewGuid():N}");
 
     public RecordingMessagePublisher Publisher { get; } = new();
 
@@ -49,6 +52,9 @@ internal sealed class WorkOpsWebApplicationFactory : WebApplicationFactory<Progr
                 ["Authentication:AllowedAlgorithms:0"] = SecurityAlgorithms.HmacSha256,
                 ["ConnectionStrings:WorkOps"] = _database.GetConnectionString(),
                 ["Operations:ApplyMigrations"] = "false",
+                ["Cache:Enabled"] = "false",
+                ["Files:DevelopmentScannerEnabled"] = "true",
+                ["Files:RootPath"] = _fileRoot,
             });
         });
         builder.ConfigureServices(services =>
@@ -60,6 +66,10 @@ internal sealed class WorkOpsWebApplicationFactory : WebApplicationFactory<Progr
             services.RemoveAll<IMessagePublisher>();
             services.AddSingleton(Publisher);
             services.AddSingleton<IMessagePublisher>(Publisher);
+            services.RemoveAll<IFileScanner>();
+            services.AddSingleton<IFileScanner, FunctionalFileScanner>();
+            services.RemoveAll<IFileStorage>();
+            services.AddSingleton<IFileStorage>(new FunctionalFileStorage(_fileRoot));
 
             services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
             {
@@ -83,5 +93,58 @@ internal sealed class WorkOpsWebApplicationFactory : WebApplicationFactory<Progr
     {
         await base.DisposeAsync();
         await _database.DisposeAsync();
+        if (Directory.Exists(_fileRoot))
+        {
+            Directory.Delete(_fileRoot, recursive: true);
+        }
     }
+}
+
+file sealed class FunctionalFileScanner : IFileScanner
+{
+    public Task<FileScanResult> ScanAsync(
+        ReadOnlyMemory<byte> content,
+        CancellationToken cancellationToken)
+    {
+        _ = content;
+        _ = cancellationToken;
+        return Task.FromResult(FileScanResult.Clean);
+    }
+}
+
+file sealed class FunctionalFileStorage(string rootPath) : IFileStorage
+{
+    public async Task SaveAsync(
+        WorkOps.Domain.WorkspaceId workspaceId,
+        string storageName,
+        ReadOnlyMemory<byte> content,
+        CancellationToken cancellationToken)
+    {
+        var path = Resolve(workspaceId, storageName);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        await File.WriteAllBytesAsync(path, content.ToArray(), cancellationToken);
+    }
+
+    public Task<Stream> OpenReadAsync(
+        WorkOps.Domain.WorkspaceId workspaceId,
+        string storageName,
+        CancellationToken cancellationToken)
+    {
+        _ = cancellationToken;
+        Stream content = File.OpenRead(Resolve(workspaceId, storageName));
+        return Task.FromResult(content);
+    }
+
+    public Task DeleteAsync(
+        WorkOps.Domain.WorkspaceId workspaceId,
+        string storageName,
+        CancellationToken cancellationToken)
+    {
+        _ = cancellationToken;
+        File.Delete(Resolve(workspaceId, storageName));
+        return Task.CompletedTask;
+    }
+
+    private string Resolve(WorkOps.Domain.WorkspaceId workspaceId, string storageName) =>
+        Path.Combine(rootPath, workspaceId.Value.ToString("N"), storageName);
 }

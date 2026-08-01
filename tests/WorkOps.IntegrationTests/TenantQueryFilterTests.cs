@@ -5,11 +5,14 @@ using Microsoft.Extensions.DependencyInjection;
 using RabbitMQ.Client;
 using Testcontainers.PostgreSql;
 using Testcontainers.RabbitMq;
+using Testcontainers.Redis;
 using WorkOps.Application;
 using WorkOps.Application.Abstractions;
 using WorkOps.Application.Common;
+using WorkOps.Application.Features;
 using WorkOps.Application.Messaging;
 using WorkOps.Application.Tenancy;
+using WorkOps.Domain.Features;
 using WorkOps.Domain.Identity;
 using WorkOps.Domain.Messaging;
 using WorkOps.Domain.Projects;
@@ -27,12 +30,15 @@ public sealed class TenantQueryFilterTests
         .Build();
     private static readonly RabbitMqContainer RabbitMq = new RabbitMqBuilder("rabbitmq:4.3.4-alpine")
         .Build();
+    private static readonly RedisContainer Redis = new RedisBuilder("redis:8.8.1-alpine")
+        .Build();
 
     [ClassInitialize]
     public static async Task InitializeAsync(TestContext _)
     {
         await Database.StartAsync();
         await RabbitMq.StartAsync();
+        await Redis.StartAsync();
         await using var dbContext = CreateDbContext(new WorkspaceContextAccessor());
         await dbContext.Database.MigrateAsync();
     }
@@ -42,6 +48,7 @@ public sealed class TenantQueryFilterTests
     {
         await Database.DisposeAsync();
         await RabbitMq.DisposeAsync();
+        await Redis.DisposeAsync();
     }
 
     [TestMethod]
@@ -56,6 +63,9 @@ public sealed class TenantQueryFilterTests
         {
             seed.Users.Add(user);
             seed.Workspaces.AddRange(first, second);
+            seed.WorkspaceSubscriptions.AddRange(
+                WorkspaceSubscription.CreateStarter(first.Id, now),
+                WorkspaceSubscription.CreateStarter(second.Id, now));
             seed.WorkspaceMemberships.AddRange(
                 WorkspaceMembership.Create(first.Id, user.Id, WorkspaceRole.Owner, now),
                 WorkspaceMembership.Create(second.Id, user.Id, WorkspaceRole.Viewer, now));
@@ -72,6 +82,8 @@ public sealed class TenantQueryFilterTests
             Assert.AreEqual(0, await noContext.OutboxMessages.CountAsync());
             Assert.AreEqual(0, await noContext.InboxMessages.CountAsync());
             Assert.AreEqual(0, await noContext.NotificationDeliveries.CountAsync());
+            Assert.AreEqual(0, await noContext.WorkspaceSubscriptions.CountAsync());
+            Assert.AreEqual(0, await noContext.Attachments.CountAsync());
         }
 
         var firstAccessor = new WorkspaceContextAccessor();
@@ -90,6 +102,9 @@ public sealed class TenantQueryFilterTests
             Assert.AreEqual(first.Id, visibleWorkspaces[0].Id);
             Assert.HasCount(1, visibleMemberships);
             Assert.AreEqual(first.Id, visibleMemberships[0].WorkspaceId);
+            Assert.AreEqual(
+                first.Id,
+                (await firstContext.WorkspaceSubscriptions.AsNoTracking().SingleAsync()).WorkspaceId);
         }
 
         var secondAccessor = new WorkspaceContextAccessor();
@@ -236,6 +251,141 @@ public sealed class TenantQueryFilterTests
         Assert.AreEqual(message.PayloadJson, Encoding.UTF8.GetString(delivery.Body.Span));
     }
 
+    [TestMethod]
+    public async Task Redis_feature_cache_is_tenant_scoped_and_invalidated()
+    {
+        await using var provider = CreateServices(
+            enableMessaging: false,
+            enableCache: true,
+            redisConnectionString: Redis.GetConnectionString());
+        var cache = provider.GetRequiredService<IFeatureCache>();
+        var firstWorkspace = WorkOps.Domain.WorkspaceId.New();
+        var secondWorkspace = WorkOps.Domain.WorkspaceId.New();
+        var firstFactoryCalls = 0;
+        var secondFactoryCalls = 0;
+
+        Task<FeatureSnapshot> FirstFactory(CancellationToken _) => Task.FromResult(
+            new FeatureSnapshot("Starter", 2, ++firstFactoryCalls));
+        Task<FeatureSnapshot> SecondFactory(CancellationToken _) => Task.FromResult(
+            new FeatureSnapshot("Team", 20, ++secondFactoryCalls));
+
+        var first = await cache.GetOrCreateAsync(
+            firstWorkspace,
+            FirstFactory,
+            CancellationToken.None);
+        var firstCached = await cache.GetOrCreateAsync(
+            firstWorkspace,
+            FirstFactory,
+            CancellationToken.None);
+        var second = await cache.GetOrCreateAsync(
+            secondWorkspace,
+            SecondFactory,
+            CancellationToken.None);
+
+        Assert.AreEqual("Starter", first.Plan);
+        Assert.AreEqual(first, firstCached);
+        Assert.AreEqual("Team", second.Plan);
+        Assert.AreEqual(1, firstFactoryCalls);
+        Assert.AreEqual(1, secondFactoryCalls);
+
+        await cache.InvalidateAsync(firstWorkspace, CancellationToken.None);
+        var refreshed = await cache.GetOrCreateAsync(
+            firstWorkspace,
+            FirstFactory,
+            CancellationToken.None);
+
+        Assert.AreEqual(2, refreshed.ActiveProjectCount);
+        Assert.AreEqual(2, firstFactoryCalls);
+        Assert.AreEqual(1, secondFactoryCalls);
+    }
+
+    [TestMethod]
+    public async Task Concurrent_project_reservations_cannot_bypass_the_plan_limit()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var user = ApplicationUser.Create(
+            $"integration|quota-{Guid.NewGuid():N}",
+            "Quota User",
+            now);
+        var workspace = Workspace.Create(
+            "Quota Workspace",
+            $"quota-{Guid.NewGuid():N}",
+            now);
+        var subscription = WorkspaceSubscription.CreateStarter(workspace.Id, now);
+        subscription.ReserveProjectSlot(2, now);
+
+        await using (var seed = CreateDbContext(new WorkspaceContextAccessor()))
+        {
+            seed.Users.Add(user);
+            seed.Workspaces.Add(workspace);
+            seed.WorkspaceMemberships.Add(
+                WorkspaceMembership.Create(workspace.Id, user.Id, WorkspaceRole.Owner, now));
+            seed.WorkspaceSubscriptions.Add(subscription);
+            await seed.SaveChangesAsync();
+        }
+
+        await using var firstContext = CreateDbContext(CreateAccessor(user.Id, workspace.Id));
+        await using var secondContext = CreateDbContext(CreateAccessor(user.Id, workspace.Id));
+        var firstCopy = await firstContext.WorkspaceSubscriptions.SingleAsync();
+        var secondCopy = await secondContext.WorkspaceSubscriptions.SingleAsync();
+        firstCopy.ReserveProjectSlot(2, now.AddSeconds(1));
+        secondCopy.ReserveProjectSlot(2, now.AddSeconds(2));
+
+        await firstContext.SaveChangesAsync();
+        await Assert.ThrowsExactlyAsync<ConcurrencyConflictException>(
+            () => secondContext.SaveChangesAsync());
+    }
+
+    [TestMethod]
+    public async Task Local_file_storage_uses_separate_tenant_directories()
+    {
+        var fileRoot = Path.Combine(
+            Path.GetTempPath(),
+            $"workops-storage-test-{Guid.NewGuid():N}");
+        try
+        {
+            await using var provider = CreateServices(
+                enableMessaging: false,
+                fileRoot: fileRoot);
+            var storage = provider.GetRequiredService<IFileStorage>();
+            var firstWorkspace = WorkOps.Domain.WorkspaceId.New();
+            var secondWorkspace = WorkOps.Domain.WorkspaceId.New();
+            const string storageName = "0123456789abcdef0123456789abcdef.bin";
+
+            await storage.SaveAsync(
+                firstWorkspace,
+                storageName,
+                "first"u8.ToArray(),
+                CancellationToken.None);
+            await storage.SaveAsync(
+                secondWorkspace,
+                storageName,
+                "second"u8.ToArray(),
+                CancellationToken.None);
+
+            await using var first = await storage.OpenReadAsync(
+                firstWorkspace,
+                storageName,
+                CancellationToken.None);
+            await using var second = await storage.OpenReadAsync(
+                secondWorkspace,
+                storageName,
+                CancellationToken.None);
+            using var firstReader = new StreamReader(first);
+            using var secondReader = new StreamReader(second);
+
+            Assert.AreEqual("first", await firstReader.ReadToEndAsync());
+            Assert.AreEqual("second", await secondReader.ReadToEndAsync());
+        }
+        finally
+        {
+            if (Directory.Exists(fileRoot))
+            {
+                Directory.Delete(fileRoot, recursive: true);
+            }
+        }
+    }
+
     private static WorkspaceContextAccessor CreateAccessor(Guid userId, WorkOps.Domain.WorkspaceId workspaceId)
     {
         var accessor = new WorkspaceContextAccessor();
@@ -256,12 +406,21 @@ public sealed class TenantQueryFilterTests
         return new WorkOpsDbContext(options, accessor);
     }
 
-    private static ServiceProvider CreateServices(bool enableMessaging, Uri? rabbitUri = null)
+    private static ServiceProvider CreateServices(
+        bool enableMessaging,
+        Uri? rabbitUri = null,
+        bool enableCache = false,
+        string? redisConnectionString = null,
+        string? fileRoot = null)
     {
         var configurationValues = new Dictionary<string, string?>(StringComparer.Ordinal)
         {
             ["ConnectionStrings:WorkOps"] = Database.GetConnectionString(),
             ["Messaging:Enabled"] = enableMessaging.ToString(),
+            ["Cache:Enabled"] = enableCache.ToString(),
+            ["Files:RootPath"] = fileRoot ?? Path.Combine(
+                Path.GetTempPath(),
+                "workops-integration-default"),
         };
         if (enableMessaging && rabbitUri is not null)
         {
@@ -272,6 +431,11 @@ public sealed class TenantQueryFilterTests
             configurationValues["Messaging:VirtualHost"] = "/";
             configurationValues["Messaging:UserName"] = Uri.UnescapeDataString(credentials[0]);
             configurationValues["Messaging:Password"] = Uri.UnescapeDataString(credentials[1]);
+        }
+
+        if (enableCache)
+        {
+            configurationValues["ConnectionStrings:Redis"] = redisConnectionString;
         }
 
         var configuration = new ConfigurationBuilder()

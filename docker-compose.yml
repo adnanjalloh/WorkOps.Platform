@@ -47,6 +47,21 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  redis:
+    image: redis:8.8.1-alpine
+    command: ["sh", "-c", "exec redis-server --requirepass \"$${REDIS_PASSWORD}\""]
+    environment:
+      REDIS_PASSWORD: ${WORKOPS_REDIS_PASSWORD:-local-development-only}
+    ports:
+      - "${WORKOPS_REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    security_opt:
+      - no-new-privileges:true
+
   api:
     image: workops-platform:${WORKOPS_IMAGE_TAG:-local}
     build:
@@ -60,6 +75,10 @@ services:
       Authentication__MetadataAddress: http://identity:8080/realms/workops/.well-known/openid-configuration
       Authentication__RequireHttpsMetadata: "false"
       ConnectionStrings__WorkOps: Host=postgres;Port=5432;Database=workops;Username=workops;Password=${WORKOPS_DB_PASSWORD:-local-development-only};Include Error Detail=false
+      ConnectionStrings__Redis: redis:6379,password=${WORKOPS_REDIS_PASSWORD:-local-development-only},abortConnect=false
+      Cache__Enabled: "true"
+      Files__DevelopmentScannerEnabled: "true"
+      Files__RootPath: /tmp/workops-attachments
       Messaging__Enabled: "true"
       Messaging__HostName: rabbitmq
       Messaging__Port: 5672
@@ -73,6 +92,8 @@ services:
       identity:
         condition: service_started
       rabbitmq:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     ports:
       - "${WORKOPS_HTTP_PORT:-8080}:8080"

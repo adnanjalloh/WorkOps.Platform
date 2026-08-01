@@ -2,6 +2,8 @@ using Microsoft.Extensions.DependencyInjection;
 using WorkOps.Application.Abstractions;
 using WorkOps.Application.Audit;
 using WorkOps.Application.Common.Sanitization;
+using WorkOps.Application.Features;
+using WorkOps.Application.Files;
 using WorkOps.Application.Identity;
 using WorkOps.Application.Messaging;
 using WorkOps.Application.Notifications;
@@ -18,6 +20,7 @@ public static class DependencyInjection
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IInputSanitizer, InputSanitizer>();
         services.AddSingleton<IMessagePublisher, DisabledMessagePublisher>();
+        services.AddSingleton<IFeatureCache, UncachedFeatureCache>();
         services.AddScoped<IWorkspaceContextAccessor, WorkspaceContextAccessor>();
         services.AddScoped<AuditWriter>();
         services.AddScoped<AuditService>();
@@ -31,6 +34,8 @@ public static class DependencyInjection
         services.AddScoped<OutboxOperationsService>();
         services.AddScoped<NotificationMessageHandler>();
         services.AddScoped<NotificationService>();
+        services.AddScoped<FeatureService>();
+        services.AddScoped<AttachmentService>();
         return services;
     }
 }

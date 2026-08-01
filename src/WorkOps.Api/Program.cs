@@ -43,6 +43,8 @@ app.MapWorkItemEndpoints();
 app.MapAuditEndpoints();
 app.MapNotificationEndpoints();
 app.MapOperationsEndpoints();
+app.MapFeatureEndpoints();
+app.MapAttachmentEndpoints();
 
 if (builder.Configuration.GetValue("Operations:ApplyMigrations", false))
 {

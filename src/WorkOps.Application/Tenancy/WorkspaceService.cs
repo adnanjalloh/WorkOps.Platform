@@ -2,6 +2,7 @@ using WorkOps.Application.Abstractions;
 using WorkOps.Application.Audit;
 using WorkOps.Application.Common.Sanitization;
 using WorkOps.Application.Identity;
+using WorkOps.Domain.Features;
 using WorkOps.Domain.Tenancy;
 
 namespace WorkOps.Application.Tenancy;
@@ -9,6 +10,7 @@ namespace WorkOps.Application.Tenancy;
 public sealed class WorkspaceService(
     IdentityService identityService,
     IWorkspaceStore workspaces,
+    IWorkspaceSubscriptionStore subscriptions,
     IUnitOfWork unitOfWork,
     AuditWriter auditWriter,
     IInputSanitizer sanitizer,
@@ -35,6 +37,7 @@ public sealed class WorkspaceService(
 
         workspaces.Add(workspace);
         workspaces.Add(membership);
+        subscriptions.Add(WorkspaceSubscription.CreateStarter(workspace.Id, now));
         auditWriter.RecordFor(
             workspace.Id,
             owner.Id,

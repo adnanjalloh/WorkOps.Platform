@@ -10,4 +10,6 @@ public static class AuditActions
     public const string WorkItemUpdated = "work_item.updated";
     public const string WorkItemTransitioned = "work_item.transitioned";
     public const string OutboxReplayed = "outbox.replayed";
+    public const string WorkspacePlanChanged = "workspace.plan_changed";
+    public const string AttachmentUploaded = "attachment.uploaded";
 }

@@ -54,4 +54,25 @@ public sealed class InputSanitizerTests
         Assert.ThrowsExactly<InputRejectedException>(
             () => _sanitizer.Apply(submitted, InputProfile.SearchText, "query.search"));
     }
+
+    [DataRow("../report.pdf")]
+    [DataRow(".hidden.txt")]
+    [DataRow("folder/report.pdf")]
+    [DataRow("report<script>.pdf")]
+    [TestMethod]
+    public void File_name_rejects_paths_and_unsafe_characters(string submitted)
+    {
+        Assert.ThrowsExactly<InputRejectedException>(
+            () => _sanitizer.Apply(submitted, InputProfile.FileName, "form.file.fileName"));
+    }
+
+    [DataRow("text/plain; charset=utf-8")]
+    [DataRow("text\\plain")]
+    [DataRow("text/plain\r\nInjected: true")]
+    [TestMethod]
+    public void Mime_type_rejects_parameters_and_header_injection(string submitted)
+    {
+        Assert.ThrowsExactly<InputRejectedException>(
+            () => _sanitizer.Apply(submitted, InputProfile.MimeType, "form.file.contentType"));
+    }
 }

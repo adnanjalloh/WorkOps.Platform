@@ -7,6 +7,8 @@ public enum SanitizationProfile
     Identifier,
     KeyPath,
     HeaderValue,
+    FileName,
+    MimeType,
     SensitiveNoMutation,
     NoneTrusted,
 }

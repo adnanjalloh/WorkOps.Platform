@@ -17,6 +17,8 @@ public sealed class InputSanitizer : IInputSanitizer
             InputProfile.Identifier => IsIdentifier(normalized),
             InputProfile.KeyPath => IsKeyPath(normalized),
             InputProfile.HeaderValue => IsHeaderValue(normalized),
+            InputProfile.FileName => IsFileName(normalized),
+            InputProfile.MimeType => IsMimeType(normalized),
             InputProfile.SensitiveNoMutation => normalized.Length is > 0 and <= 4096,
             InputProfile.NoneTrusted => true,
             _ => false,
@@ -82,4 +84,23 @@ public sealed class InputSanitizer : IInputSanitizer
     private static bool IsHeaderValue(string value) =>
         value.Length is > 0 and <= 128 &&
         value.All(static character => !char.IsControl(character));
+
+    private static bool IsFileName(string value) =>
+        value.Length is > 0 and <= 120 &&
+        value[0] != '.' &&
+        Path.GetFileName(value) == value &&
+        value.All(static character =>
+            char.IsAsciiLetterOrDigit(character) ||
+            character is ' ' or '-' or '_' or '.');
+
+    private static bool IsMimeType(string value)
+    {
+        if (value.Length is < 3 or > 100 || value.Count(static character => character == '/') != 1)
+        {
+            return false;
+        }
+
+        return value.All(static character =>
+            char.IsAsciiLetterOrDigit(character) || character is '-' or '+' or '.' or '/');
+    }
 }

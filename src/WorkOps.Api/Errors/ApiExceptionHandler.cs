@@ -2,9 +2,11 @@ using Microsoft.AspNetCore.Diagnostics;
 using WorkOps.Application.Common;
 using WorkOps.Application.Common.Sanitization;
 using WorkOps.Application.Common.Validation;
+using WorkOps.Application.Files;
 using WorkOps.Application.Projects;
 using WorkOps.Application.Tenancy;
 using WorkOps.Application.WorkItems;
+using WorkOps.Domain.Features;
 using WorkOps.Domain.Messaging;
 using WorkOps.Domain.WorkItems;
 
@@ -109,6 +111,33 @@ internal sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) :
                     StatusCodes.Status409Conflict,
                     "Outbox message cannot be replayed",
                     "outbox_replay_not_allowed",
+                    cancellationToken);
+                return true;
+
+            case FeatureLimitExceededException:
+                await WriteProblemAsync(
+                    httpContext,
+                    StatusCodes.Status409Conflict,
+                    "Workspace plan limit reached",
+                    "feature_limit_exceeded",
+                    cancellationToken);
+                return true;
+
+            case AttachmentRejectedException rejectedAttachment:
+                await WriteProblemAsync(
+                    httpContext,
+                    StatusCodes.Status422UnprocessableEntity,
+                    "Attachment was rejected",
+                    rejectedAttachment.Code,
+                    cancellationToken);
+                return true;
+
+            case FileScannerUnavailableException:
+                await WriteProblemAsync(
+                    httpContext,
+                    StatusCodes.Status503ServiceUnavailable,
+                    "Attachment scanning is unavailable",
+                    "attachment_scanner_unavailable",
                     cancellationToken);
                 return true;
 

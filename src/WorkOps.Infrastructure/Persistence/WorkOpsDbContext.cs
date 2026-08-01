@@ -3,6 +3,8 @@ using WorkOps.Application.Abstractions;
 using WorkOps.Application.Common;
 using WorkOps.Application.Tenancy;
 using WorkOps.Domain.Audit;
+using WorkOps.Domain.Features;
+using WorkOps.Domain.Files;
 using WorkOps.Domain.Identity;
 using WorkOps.Domain.Messaging;
 using WorkOps.Domain.Notifications;
@@ -33,6 +35,10 @@ public sealed class WorkOpsDbContext(
     public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
 
     public DbSet<NotificationDelivery> NotificationDeliveries => Set<NotificationDelivery>();
+
+    public DbSet<WorkspaceSubscription> WorkspaceSubscriptions => Set<WorkspaceSubscription>();
+
+    public DbSet<Attachment> Attachments => Set<Attachment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -69,6 +75,14 @@ public sealed class WorkOpsDbContext(
         modelBuilder.Entity<NotificationDelivery>().HasQueryFilter(
             delivery => workspaceContext.CurrentWorkspaceId.HasValue &&
                         delivery.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault());
+
+        modelBuilder.Entity<WorkspaceSubscription>().HasQueryFilter(
+            subscription => workspaceContext.CurrentWorkspaceId.HasValue &&
+                            subscription.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault());
+
+        modelBuilder.Entity<Attachment>().HasQueryFilter(
+            attachment => workspaceContext.CurrentWorkspaceId.HasValue &&
+                          attachment.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault());
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
