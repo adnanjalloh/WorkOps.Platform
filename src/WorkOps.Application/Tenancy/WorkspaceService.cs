@@ -13,6 +13,7 @@ public sealed class WorkspaceService(
     IWorkspaceSubscriptionStore subscriptions,
     IUnitOfWork unitOfWork,
     AuditWriter auditWriter,
+    IWorkspaceContextAccessor workspaceContext,
     IInputSanitizer sanitizer,
     TimeProvider timeProvider)
 {
@@ -35,6 +36,7 @@ public sealed class WorkspaceService(
         var workspace = Workspace.Create(safeName, safeSlug, now);
         var membership = WorkspaceMembership.Create(workspace.Id, owner.Id, WorkspaceRole.Owner, now);
 
+        using var provisioning = workspaceContext.BeginProvisioning(workspace.Id);
         workspaces.Add(workspace);
         workspaces.Add(membership);
         subscriptions.Add(WorkspaceSubscription.CreateStarter(workspace.Id, now));

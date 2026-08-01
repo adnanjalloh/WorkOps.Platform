@@ -1,15 +1,6 @@
 using System.Reflection;
 using WorkOps.Contracts.Common;
-using WorkOps.Domain.Audit;
 using WorkOps.Domain.Common;
-using WorkOps.Domain.Features;
-using WorkOps.Domain.Files;
-using WorkOps.Domain.Idempotency;
-using WorkOps.Domain.Messaging;
-using WorkOps.Domain.Notifications;
-using WorkOps.Domain.Projects;
-using WorkOps.Domain.Tenancy;
-using WorkOps.Domain.WorkItems;
 using WorkOps.Infrastructure.Persistence;
 
 namespace WorkOps.ArchitectureTests;
@@ -53,23 +44,21 @@ public sealed class DependencyRuleTests
     }
 
     [TestMethod]
-    public void Tenant_owned_entities_are_marked_for_isolation()
+    public void Every_mapped_tenant_owned_entity_has_a_query_filter()
     {
-        var tenantOwnedTypes = new[]
-        {
-            typeof(WorkspaceMembership),
-            typeof(Project),
-            typeof(WorkItem),
-            typeof(AuditEvent),
-            typeof(OutboxMessage),
-            typeof(InboxMessage),
-            typeof(NotificationDelivery),
-            typeof(WorkspaceSubscription),
-            typeof(Attachment),
-            typeof(IdempotencyRecord),
-        };
+        using var dbContext = new WorkOpsDbContextFactory().CreateDbContext([]);
+        var tenantOwnedEntityTypes = dbContext.Model
+            .GetEntityTypes()
+            .Where(static entityType => typeof(IWorkspaceOwned).IsAssignableFrom(entityType.ClrType))
+            .ToArray();
+        var missingFilters = tenantOwnedEntityTypes
+            .Where(static entityType => entityType.GetDeclaredQueryFilters().Count == 0)
+            .Select(static entityType => entityType.ClrType.FullName!)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
 
-        Assert.IsTrue(tenantOwnedTypes.All(typeof(IWorkspaceOwned).IsAssignableFrom));
+        Assert.IsNotEmpty(tenantOwnedEntityTypes);
+        CollectionAssert.AreEqual(Array.Empty<string>(), missingFilters);
     }
 
     [TestMethod]

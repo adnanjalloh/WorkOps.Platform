@@ -4,7 +4,9 @@ using WorkOps.Application.Abstractions;
 using WorkOps.Application.Common;
 using WorkOps.Application.Idempotency;
 using WorkOps.Application.Tenancy;
+using WorkOps.Domain;
 using WorkOps.Domain.Audit;
+using WorkOps.Domain.Common;
 using WorkOps.Domain.Features;
 using WorkOps.Domain.Files;
 using WorkOps.Domain.Idempotency;
@@ -94,11 +96,13 @@ public sealed class WorkOpsDbContext(
                       record.WorkspaceId == workspaceContext.CurrentWorkspaceId.GetValueOrDefault());
     }
 
-    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
+        EnforceTenantWriteBoundary();
+
         try
         {
-            return await base.SaveChangesAsync(cancellationToken);
+            return base.SaveChanges(acceptAllChangesOnSuccess);
         }
         catch (DbUpdateConcurrencyException)
         {
@@ -112,6 +116,67 @@ public sealed class WorkOpsDbContext(
             })
         {
             throw new IdempotencyRaceException();
+        }
+    }
+
+    public override async Task<int> SaveChangesAsync(
+        bool acceptAllChangesOnSuccess,
+        CancellationToken cancellationToken = default)
+    {
+        EnforceTenantWriteBoundary();
+
+        try
+        {
+            return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new ConcurrencyConflictException();
+        }
+        catch (DbUpdateException exception) when (
+            exception.InnerException is PostgresException
+            {
+                SqlState: PostgresErrorCodes.UniqueViolation,
+                ConstraintName: "PK_idempotency_records",
+            })
+        {
+            throw new IdempotencyRaceException();
+        }
+    }
+
+    private void EnforceTenantWriteBoundary()
+    {
+        var pendingEntries = ChangeTracker.Entries()
+            .Where(static entry =>
+                entry.Entity is IWorkspaceOwned &&
+                entry.State is EntityState.Added or EntityState.Modified or EntityState.Deleted)
+            .ToArray();
+
+        if (pendingEntries.Length == 0)
+        {
+            return;
+        }
+
+        var allowedWorkspaceId = workspaceContext.CurrentWorkspaceId ??
+                                 workspaceContext.ProvisioningWorkspaceId;
+        if (!allowedWorkspaceId.HasValue)
+        {
+            throw new TenantWriteBoundaryException();
+        }
+
+        foreach (var entry in pendingEntries)
+        {
+            var entity = (IWorkspaceOwned)entry.Entity;
+            var workspaceProperty = entry.Property(nameof(IWorkspaceOwned.WorkspaceId));
+
+            if (entity.WorkspaceId != allowedWorkspaceId.Value ||
+                entry.State is not EntityState.Added &&
+                (workspaceProperty.IsModified ||
+                 workspaceProperty.OriginalValue is not WorkspaceId originalWorkspaceId ||
+                 originalWorkspaceId != allowedWorkspaceId.Value))
+            {
+                throw new TenantWriteBoundaryException();
+            }
         }
     }
 }

@@ -15,6 +15,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using WorkOps.Application.Audit;
 using WorkOps.Application.Messaging;
+using WorkOps.Application.Tenancy;
 using WorkOps.Contracts.Audit;
 using WorkOps.Contracts.Common;
 using WorkOps.Contracts.Features;
@@ -189,6 +190,7 @@ public sealed class TenantIdentityEndpointTests
         await using (var scope = _factory.Services.CreateAsyncScope())
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<WorkOpsDbContext>();
+            var workspaceContext = scope.ServiceProvider.GetRequiredService<IWorkspaceContextAccessor>();
             var suspendedWorkspace = await dbContext.Workspaces
                 .IgnoreQueryFilters()
                 .SingleAsync(workspace => workspace.Id == WorkOps.Domain.WorkspaceId.From(suspended.Id));
@@ -198,6 +200,7 @@ public sealed class TenantIdentityEndpointTests
 
             suspendedWorkspace.Suspend(DateTimeOffset.UtcNow);
             inactiveMembership.Deactivate(DateTimeOffset.UtcNow);
+            workspaceContext.EstablishBackground(WorkOps.Domain.WorkspaceId.From(inactive.Id));
             await dbContext.SaveChangesAsync();
         }
 

@@ -8,7 +8,11 @@ public interface IWorkspaceContextAccessor
 
     WorkspaceId? CurrentWorkspaceId { get; }
 
+    WorkspaceId? ProvisioningWorkspaceId { get; }
+
     void Establish(WorkspaceContext context);
 
     void EstablishBackground(WorkspaceId workspaceId);
+
+    IDisposable BeginProvisioning(WorkspaceId workspaceId);
 }

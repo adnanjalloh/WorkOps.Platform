@@ -1,12 +1,15 @@
 using Microsoft.EntityFrameworkCore;
 using WorkOps.Application.Abstractions;
 using WorkOps.Application.Messaging;
+using WorkOps.Application.Tenancy;
 using WorkOps.Domain.Messaging;
 using WorkOps.Infrastructure.Persistence;
 
 namespace WorkOps.Infrastructure.Messaging;
 
-internal sealed class OutboxStore(WorkOpsDbContext dbContext) : IOutboxStore
+internal sealed class OutboxStore(
+    WorkOpsDbContext dbContext,
+    IWorkspaceContextAccessor workspaceContext) : IOutboxStore
 {
     public void Add(OutboxMessage message) => dbContext.OutboxMessages.Add(message);
 
@@ -34,6 +37,7 @@ internal sealed class OutboxStore(WorkOpsDbContext dbContext) : IOutboxStore
             return null;
         }
 
+        workspaceContext.EstablishBackground(message.WorkspaceId);
         message.Lease(lockedUntil);
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
