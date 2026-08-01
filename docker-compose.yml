@@ -1,4 +1,37 @@
 services:
+  postgres:
+    image: postgres:18.4-alpine
+    environment:
+      POSTGRES_DB: workops
+      POSTGRES_USER: workops
+      POSTGRES_PASSWORD: ${WORKOPS_DB_PASSWORD:-local-development-only}
+    ports:
+      - "${WORKOPS_DB_PORT:-5432}:5432"
+    volumes:
+      - workops-postgres:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U workops -d workops"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    security_opt:
+      - no-new-privileges:true
+
+  identity:
+    image: quay.io/keycloak/keycloak:26.7.0
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${WORKOPS_IDENTITY_ADMIN:-local-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${WORKOPS_IDENTITY_ADMIN_PASSWORD:-local-development-only}
+      KC_HEALTH_ENABLED: "true"
+      KC_HOSTNAME: http://localhost:${WORKOPS_IDENTITY_PORT:-8081}
+    ports:
+      - "${WORKOPS_IDENTITY_PORT:-8081}:8080"
+    volumes:
+      - ./infra/keycloak/workops-realm.json:/opt/keycloak/data/import/workops-realm.json:ro
+    security_opt:
+      - no-new-privileges:true
+
   api:
     image: workops-platform:${WORKOPS_IMAGE_TAG:-local}
     build:
@@ -7,6 +40,17 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_HTTP_PORTS: 8080
+      Authentication__Audience: workops-api
+      Authentication__Issuer: http://localhost:${WORKOPS_IDENTITY_PORT:-8081}/realms/workops
+      Authentication__MetadataAddress: http://identity:8080/realms/workops/.well-known/openid-configuration
+      Authentication__RequireHttpsMetadata: "false"
+      ConnectionStrings__WorkOps: Host=postgres;Port=5432;Database=workops;Username=workops;Password=${WORKOPS_DB_PASSWORD:-local-development-only};Include Error Detail=false
+      Operations__ApplyMigrations: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      identity:
+        condition: service_started
     ports:
       - "${WORKOPS_HTTP_PORT:-8080}:8080"
     read_only: true
@@ -16,3 +60,6 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+
+volumes:
+  workops-postgres:
