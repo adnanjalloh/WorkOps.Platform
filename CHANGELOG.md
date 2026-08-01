@@ -43,3 +43,10 @@ first release.
 - Tenant/user/method/route scoped project-create idempotency with canonical request hashing,
   persisted successful responses, expiry, replay, mismatch denial, and a database race boundary.
 - Low-cardinality outbox duration/backlog metrics and a conservative local load-smoke script.
+- Merged coverage reporting with enforced 70% line and 35% branch floors.
+- High/critical container vulnerability scanning in continuous integration and release jobs.
+- Reduced container build context that excludes local build, test, and coverage artifacts.
+- Full-commit action pins updated to current maintained major versions.
+- Tag-gated releases that verify the source, publish semantic-version and commit-addressed GHCR
+  images, generate an SPDX JSON SBOM, and attach immutable digest evidence.
+- OWASP ASVS 5.0 area mapping and an explicit repository-settings hardening checklist.

@@ -88,3 +88,16 @@ WORKOPS_ACCESS_TOKEN=... WORKOPS_WORKSPACE_ID=... ./scripts/load-smoke.sh
 
 The script defaults to 20 sequential feature reads and labels its output as a local smoke result,
 not a production benchmark.
+
+## Release process
+
+The release workflow accepts only `vMAJOR.MINOR.PATCH` tags whose commit is already on `master`.
+It restores locked dependencies, verifies formatting, builds, tests, audits NuGet packages, scans
+Git history, builds the container, and blocks publication when Trivy finds a high or critical
+vulnerability. It then generates an SPDX JSON SBOM, publishes both the semantic-version image and a
+commit-addressed image to GHCR, records the image digest, and creates release notes with the SBOM
+and digest evidence attached.
+
+Configure the `release` environment with a required reviewer before publishing. Treat tags as
+immutable and protect `v*` tags from update or deletion. Repository-side controls that cannot be
+committed are listed in [GitHub settings](github-settings.md).

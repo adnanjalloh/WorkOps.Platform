@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-This repository is pre-release. Only the current `main` branch will receive security fixes until
+This repository is pre-release. Only the current `master` branch will receive security fixes until
 the first tagged release. Supported release lines will be listed here when they exist.
 
 ## Reporting a vulnerability

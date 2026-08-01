@@ -7,11 +7,11 @@ A production-minded multi-tenant workflow API being built with ASP.NET Core and 
 
 ## Status
 
-**Production-hardening milestone - not yet a production release.** The repository now adds
-structured JSON logs, correlation and trace diagnostics, OpenTelemetry instrumentation, explicit
-CORS, rate limits, security headers, production-only HTTPS/HSTS rules, development-only OpenAPI,
-and scoped HTTP idempotency to the tenant, cache, file, audit, and messaging capabilities. Security
-release automation and a runnable golden-scenario demo remain. There is no hosted demo.
+**Release-readiness milestone - not yet a production release.** The repository now adds enforceable
+line and branch coverage floors, current full-commit action pins, container vulnerability scanning,
+tag-gated image publishing, SPDX SBOM evidence, an OWASP ASVS 5.0 area map, and a repository
+hardening checklist to the production-minded API controls. A runnable golden-scenario demo remains.
+There is no hosted demo.
 
 ## Thirty-second overview
 
@@ -92,10 +92,15 @@ Implemented:
   headers, HSTS/HTTPS outside development/test, and OpenAPI documents only in development;
 - tenant/user/method/route scoped project-create idempotency with canonical request hashes, a
   database uniqueness boundary, persisted successful responses, 24-hour expiry, and mismatch denial;
+- CI coverage floors of 70% lines and 35% branches, merged human-readable reports, high/critical
+  image vulnerability scanning, and current action pins locked to full commit SHAs;
+- release-only semantic and commit-addressed GHCR image publication with a pre-push vulnerability
+  gate, SPDX JSON SBOM, digest evidence, protected release environment, and generated release notes;
 - PostgreSQL migrations and container-backed security regression tests.
 
 Planned controls are documented in [security](docs/security.md) and the
-[threat model](docs/threat-model.md). This project does not claim security certification.
+[threat model](docs/threat-model.md). The [ASVS map](docs/asvs-map.md) is an evidence index, not a
+certification or full compliance claim.
 
 ## Quick start
 
@@ -133,6 +138,10 @@ dotnet build -c Release --no-restore
 dotnet test -c Release --no-build --logger "trx" --collect:"XPlat Code Coverage"
 ```
 
+CI merges the four coverage files and enforces 70% line and 35% branch coverage. The measured
+baseline when the gate was introduced was 77.3% lines and 37.8% branches; the floors are intended to
+rise as edge-case coverage expands.
+
 The current 78 tests cover the identity and project boundaries plus safe audit metadata, atomic
 outbox creation, real PostgreSQL lease contention, deterministic backoff, bounded failure and
 replay, real RabbitMQ publishing, internal-message validation, duplicate inbox handling, and a
@@ -147,8 +156,8 @@ idempotent replay/mismatch behavior. The full strategy and honest gaps are in
 
 - **2-minute hiring-manager tour:** this overview -> [architecture](docs/architecture.md) -> [demo plan](docs/demo.md)
 - **10-minute backend review:** [work-item service](src/WorkOps.Application/WorkItems/WorkItemService.cs) -> [outbox worker](src/WorkOps.Infrastructure/Messaging/OutboxWorker.cs) -> [functional test](tests/WorkOps.FunctionalTests/TenantIdentityEndpointTests.cs)
-- **Security review:** [threat model](docs/threat-model.md) -> [security controls](docs/security.md) -> [CI](.github/workflows/ci.yml)
-- **Delivery review:** [CI](.github/workflows/ci.yml) -> [Dockerfile](Dockerfile) -> [operations](docs/operations.md)
+- **Security review:** [threat model](docs/threat-model.md) -> [ASVS map](docs/asvs-map.md) -> [security controls](docs/security.md) -> [CI](.github/workflows/ci.yml)
+- **Delivery review:** [CI](.github/workflows/ci.yml) -> [release workflow](.github/workflows/release.yml) -> [Dockerfile](Dockerfile) -> [operations](docs/operations.md)
 
 ## Repository map
 
@@ -166,7 +175,8 @@ idempotent replay/mismatch behavior. The full strategy and honest gaps are in
 - [x] Transactional audit and outbox processing with idempotent notification delivery
 - [x] Tenant-aware caching, feature limits, and secure file attachments
 - [x] OpenTelemetry, structured logging, rate limiting, and production hardening
-- [ ] Reproducible golden-scenario demo and release evidence
+- [x] Security automation, coverage gates, image scanning, SBOM, and release evidence
+- [ ] Reproducible golden-scenario demo and recruiter-ready repository tour
 
 See [CHANGELOG](CHANGELOG.md), [CONTRIBUTING](CONTRIBUTING.md), and [SECURITY](SECURITY.md).
 A license will be selected deliberately before public release.

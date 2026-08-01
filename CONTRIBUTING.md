@@ -12,7 +12,10 @@
 dotnet restore --locked-mode
 dotnet format --verify-no-changes --no-restore
 dotnet build -c Release --no-restore
-dotnet test -c Release --no-build
+dotnet test -c Release --no-build --collect:"XPlat Code Coverage" --results-directory artifacts/test-results
+dotnet tool restore
+dotnet tool run reportgenerator -- "-reports:artifacts/test-results/**/coverage.cobertura.xml" "-targetdir:artifacts/coverage" "-assemblyfilters:+WorkOps.*;-WorkOps.*Tests" "-reporttypes:Cobertura;TextSummary"
+./scripts/check-coverage.sh artifacts/coverage/Cobertura.xml 70 35
 docker compose config
 ```
 
@@ -39,4 +42,5 @@ credentials. Use independently written code and synthetic data only.
 - [ ] Tests cover the meaningful behavior and failure path
 - [ ] Logs and errors contain no sensitive values
 - [ ] Documentation and ADRs are updated when behavior or decisions change
-- [ ] Restore, format, build, tests, dependency audit, and secret scan pass
+- [ ] Line and branch coverage remain above the repository floors
+- [ ] Restore, format, build, tests, dependency audit, secret scan, and container scan pass

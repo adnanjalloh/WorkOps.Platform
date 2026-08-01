@@ -32,6 +32,11 @@ integration suite independently proves the real broker, cache, database, and loc
 The tests prove registration and HTTP behavior for observability/hardening; they do not prove a
 specific collector backend, reverse-proxy configuration, or production capacity.
 
+The coverage baseline recorded when the automated gate was introduced was 77.3% line coverage and
+37.8% branch coverage. CI merges collector output, publishes HTML/Cobertura/Markdown evidence, and
+requires at least 70% lines and 35% branches. These are regression floors rather than quality
+targets; both should rise as the remaining recovery and operator paths gain tests.
+
 ## Planned suites
 
 - Additional message-transport tests for connection recovery and failed-queue operator workflows.
@@ -49,4 +54,13 @@ dotnet restore --locked-mode
 dotnet format --verify-no-changes --no-restore
 dotnet build -c Release --no-restore
 dotnet test -c Release --no-build --logger "trx" --collect:"XPlat Code Coverage"
+```
+
+To reproduce the CI coverage gate:
+
+```bash
+dotnet tool restore
+dotnet test -c Release --no-build --collect:"XPlat Code Coverage" --results-directory artifacts/test-results
+dotnet tool run reportgenerator -- "-reports:artifacts/test-results/**/coverage.cobertura.xml" "-targetdir:artifacts/coverage" "-assemblyfilters:+WorkOps.*;-WorkOps.*Tests" "-reporttypes:Cobertura;TextSummary"
+./scripts/check-coverage.sh artifacts/coverage/Cobertura.xml 70 35
 ```

@@ -37,7 +37,8 @@ and deployment environment.
 | Cross-workspace cache collision | Implemented | Tenant-derived Redis keys, short expiry, explicit invalidation, PostgreSQL fallback, real Redis isolation tests |
 | Mass assignment | Implemented for current contracts | Explicit request contracts omit tenant ownership and persistence fields; assignees must be active current-workspace members |
 | Resource exhaustion | Implemented baseline | Request bodies/headers and pagination are bounded; jobs have leases, prefetch, and retry ceilings; user/IP fixed-window rate limits return safe `429`; capacity/load tuning remains deployment-specific |
-| Compromised CI action | Implemented baseline | Full commit-SHA pins, minimal token permissions, dependency review |
+| Compromised CI action | Implemented baseline | Current full commit-SHA pins, minimal default permissions, dependency review, CodeQL, Gitleaks, and Dependabot |
+| Vulnerable or substituted release image | Implemented baseline | Release rebuild and tests, high/critical image scan before publication, semantic and commit-addressed tags, immutable digest evidence, and SPDX JSON SBOM; signing and provenance attestation remain planned |
 | Over-privileged deployment identity | Planned | Workload identity, scoped roles, protected environments, auditable deploy job |
 
 ## Residual risk

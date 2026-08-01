@@ -15,7 +15,10 @@ certification claim.
 - pinned stable .NET container versions, non-root runtime, dropped capabilities, and read-only root
   filesystem in Compose;
 - GitHub Actions with read-only default permissions and third-party actions pinned to full commits;
-- configured secret, dependency, and static-analysis workflows;
+- configured secret, dependency, static-analysis, and high/critical container vulnerability scans;
+- merged coverage evidence with enforced 70% line and 35% branch regression floors;
+- tag-gated release verification, an approval-capable release environment, semantic and
+  commit-addressed container tags, SPDX JSON SBOM generation, and digest evidence;
 - clean dependency boundaries checked by tests;
 - strict bearer-token validation for issuer, audience, signature, expiration, accepted algorithms,
   and the required `sub` claim;
@@ -69,6 +72,9 @@ certification claim.
   cache/file isolation, quota races, path traversal, MIME/signature mismatch, invalid UTF-8, and
   oversized uploads, untrusted origins, rate limits, production HSTS/OpenAPI behavior, safe
   diagnostics, tested-log redaction, and idempotency replay/mismatch behavior.
+
+The [OWASP ASVS 5.0 map](asvs-map.md) connects implemented controls to review evidence. It is a
+navigation aid, not a certification or a claim that every requirement in a referenced area passes.
 
 ## Required before the first release
 
