@@ -27,7 +27,9 @@ internal sealed class ProjectConfiguration : IEntityTypeConfiguration<Project>
             .HasForeignKey(project => project.WorkspaceId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasIndex(project => new { project.WorkspaceId, project.Key }).IsUnique();
+        builder.HasIndex(project => new { project.WorkspaceId, project.Key })
+            .IsUnique()
+            .HasDatabaseName("UX_projects_workspace_key");
         builder.HasIndex(project => new { project.WorkspaceId, project.Status, project.Name });
     }
 }

@@ -8,9 +8,13 @@ using Testcontainers.RabbitMq;
 using Testcontainers.Redis;
 using WorkOps.Application;
 using WorkOps.Application.Abstractions;
+using WorkOps.Application.Audit;
 using WorkOps.Application.Common;
+using WorkOps.Application.Common.Sanitization;
 using WorkOps.Application.Features;
+using WorkOps.Application.Identity;
 using WorkOps.Application.Messaging;
+using WorkOps.Application.Projects;
 using WorkOps.Application.Tenancy;
 using WorkOps.Domain.Audit;
 using WorkOps.Domain.Common;
@@ -237,6 +241,81 @@ public sealed class TenantQueryFilterTests
     }
 
     [TestMethod]
+    public async Task Notification_deduplication_swallows_only_expected_constraints()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var suffix = Guid.NewGuid().ToString("N");
+        var user = ApplicationUser.Create(
+            $"integration|notification-{suffix}",
+            "Notification User",
+            now);
+        var workspace = Workspace.Create(
+            "Notification Workspace",
+            $"notification-{suffix}",
+            now);
+        var firstMessageId = Guid.NewGuid();
+        var secondMessageId = Guid.NewGuid();
+        var seedAccessor = new WorkspaceContextAccessor();
+        using (seedAccessor.BeginProvisioning(workspace.Id))
+        await using (var seed = CreateDbContext(seedAccessor))
+        {
+            seed.Users.Add(user);
+            seed.Workspaces.Add(workspace);
+            seed.WorkspaceMemberships.Add(
+                WorkspaceMembership.Create(workspace.Id, user.Id, WorkspaceRole.Owner, now));
+            seed.OutboxMessages.AddRange(
+                OutboxMessage.Create(
+                    firstMessageId,
+                    workspace.Id,
+                    WorkItemStatusChangedMessage.MessageType,
+                    "{}",
+                    now),
+                OutboxMessage.Create(
+                    secondMessageId,
+                    workspace.Id,
+                    WorkItemStatusChangedMessage.MessageType,
+                    "{}",
+                    now));
+            await seed.SaveChangesAsync();
+        }
+
+        var firstMessage = CreateNotificationMessage(firstMessageId, workspace.Id, user.Id, now);
+        await using var provider = CreateServices(enableMessaging: false);
+        await using (var firstScope = provider.CreateAsyncScope())
+        {
+            var accessor = firstScope.ServiceProvider.GetRequiredService<IWorkspaceContextAccessor>();
+            accessor.EstablishBackground(workspace.Id);
+            var store = firstScope.ServiceProvider.GetRequiredService<INotificationStore>();
+            Assert.IsTrue(await store.TryDeliverAsync(firstMessage, now, CancellationToken.None));
+        }
+
+        await using (var duplicateScope = provider.CreateAsyncScope())
+        {
+            var accessor = duplicateScope.ServiceProvider.GetRequiredService<IWorkspaceContextAccessor>();
+            accessor.EstablishBackground(workspace.Id);
+            var store = duplicateScope.ServiceProvider.GetRequiredService<INotificationStore>();
+            Assert.IsFalse(await store.TryDeliverAsync(firstMessage, now, CancellationToken.None));
+        }
+
+        await using (var unrelatedScope = provider.CreateAsyncScope())
+        {
+            var accessor = unrelatedScope.ServiceProvider.GetRequiredService<IWorkspaceContextAccessor>();
+            accessor.EstablishBackground(workspace.Id);
+            var dbContext = unrelatedScope.ServiceProvider.GetRequiredService<WorkOpsDbContext>();
+            dbContext.Workspaces.Add(Workspace.Create("Duplicate Slug", workspace.Slug, now));
+            var store = unrelatedScope.ServiceProvider.GetRequiredService<INotificationStore>();
+            var secondMessage = CreateNotificationMessage(
+                secondMessageId,
+                workspace.Id,
+                user.Id,
+                now);
+
+            await Assert.ThrowsExactlyAsync<DuplicateWorkspaceSlugException>(
+                () => store.TryDeliverAsync(secondMessage, now, CancellationToken.None));
+        }
+    }
+
+    [TestMethod]
     public async Task Rabbitmq_adapter_publishes_a_persistent_routable_message()
     {
         var rabbitUri = new Uri(RabbitMq.GetConnectionString());
@@ -312,6 +391,40 @@ public sealed class TenantQueryFilterTests
         Assert.AreEqual(2, refreshed.ActiveProjectCount);
         Assert.AreEqual(2, firstFactoryCalls);
         Assert.AreEqual(1, secondFactoryCalls);
+    }
+
+    [TestMethod]
+    public async Task Redis_feature_cache_recovers_from_malformed_and_incompatible_values()
+    {
+        await using var provider = CreateServices(
+            enableMessaging: false,
+            enableCache: true,
+            redisConnectionString: Redis.GetConnectionString());
+        var cache = provider.GetRequiredService<IFeatureCache>();
+        var connection = provider.GetRequiredService<StackExchange.Redis.IConnectionMultiplexer>();
+        var database = connection.GetDatabase();
+        var workspaceId = WorkOps.Domain.WorkspaceId.New();
+        var cacheKey = $"workops:{workspaceId.Value:N}:features";
+        var corruptValues = new[]
+        {
+            "{not-json",
+            "{\"plan\":\"Starter\"}",
+        };
+        var factoryCalls = 0;
+
+        foreach (var corruptValue in corruptValues)
+        {
+            await database.StringSetAsync(cacheKey, corruptValue);
+            var result = await cache.GetOrCreateAsync(
+                workspaceId,
+                _ => Task.FromResult(new FeatureSnapshot("Starter", 2, ++factoryCalls)),
+                CancellationToken.None);
+
+            Assert.AreEqual("Starter", result.Plan);
+            Assert.IsFalse(await database.KeyExistsAsync(cacheKey));
+        }
+
+        Assert.AreEqual(2, factoryCalls);
     }
 
     [TestMethod]
@@ -474,6 +587,145 @@ public sealed class TenantQueryFilterTests
     }
 
     [TestMethod]
+    public async Task Concurrent_identity_materialization_returns_one_exact_subject_row()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var identity = new CurrentIdentity($"integration|identity-race-{suffix}", "Identity Race");
+        await using var provider = CreateServices(enableMessaging: false);
+        await using var firstScope = provider.CreateAsyncScope();
+        await using var secondScope = provider.CreateAsyncScope();
+        var firstService = firstScope.ServiceProvider.GetRequiredService<IdentityService>();
+        var secondService = secondScope.ServiceProvider.GetRequiredService<IdentityService>();
+
+        var users = await Task.WhenAll(
+            firstService.GetOrCreateAsync(identity, CancellationToken.None),
+            secondService.GetOrCreateAsync(identity, CancellationToken.None));
+
+        Assert.AreEqual(users[0].Id, users[1].Id);
+        await using var verify = CreateDbContext(new WorkspaceContextAccessor());
+        Assert.AreEqual(
+            1,
+            await verify.Users.CountAsync(user => user.Subject == identity.Subject));
+    }
+
+    [TestMethod]
+    public async Task Concurrent_workspace_slug_race_rolls_back_the_losing_identity_and_graph()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var slug = $"workspace-race-{suffix}";
+        var identities = new[]
+        {
+            new CurrentIdentity($"integration|workspace-race-a-{suffix}", "Race A"),
+            new CurrentIdentity($"integration|workspace-race-b-{suffix}", "Race B"),
+        };
+        var gate = new AsyncGate(participantCount: 2);
+        await using var provider = CreateServices(enableMessaging: false);
+        await using var firstScope = provider.CreateAsyncScope();
+        await using var secondScope = provider.CreateAsyncScope();
+        var firstService = CreateWorkspaceService(firstScope.ServiceProvider, gate);
+        var secondService = CreateWorkspaceService(secondScope.ServiceProvider, gate);
+
+        var results = await Task.WhenAll(
+            CaptureAsync(() => firstService.CreateAsync(
+                identities[0],
+                "Workspace Race A",
+                slug,
+                CancellationToken.None)),
+            CaptureAsync(() => secondService.CreateAsync(
+                identities[1],
+                "Workspace Race B",
+                slug,
+                CancellationToken.None)));
+
+        Assert.AreEqual(1, results.Count(static exception => exception is null));
+        Assert.AreEqual(
+            1,
+            results.Count(static exception => exception is DuplicateWorkspaceSlugException));
+
+        await using var verify = CreateDbContext(new WorkspaceContextAccessor());
+        var workspaceId = await verify.Workspaces
+            .IgnoreQueryFilters()
+            .Where(workspace => workspace.Slug == slug)
+            .Select(workspace => workspace.Id)
+            .SingleAsync();
+        var subjects = identities.Select(static identity => identity.Subject).ToArray();
+        Assert.AreEqual(1, await verify.Users.CountAsync(user => subjects.Contains(user.Subject)));
+        Assert.AreEqual(
+            1,
+            await verify.WorkspaceMemberships
+                .IgnoreQueryFilters()
+                .CountAsync(membership => membership.WorkspaceId == workspaceId));
+        Assert.AreEqual(
+            1,
+            await verify.WorkspaceSubscriptions
+                .IgnoreQueryFilters()
+                .CountAsync(subscription => subscription.WorkspaceId == workspaceId));
+        Assert.AreEqual(
+            1,
+            await verify.AuditEvents
+                .IgnoreQueryFilters()
+                .CountAsync(auditEvent => auditEvent.WorkspaceId == workspaceId));
+    }
+
+    [TestMethod]
+    public async Task Concurrent_membership_and_project_keys_map_to_exact_conflicts()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var suffix = Guid.NewGuid().ToString("N");
+        var owner = ApplicationUser.Create(
+            $"integration|owner-{suffix}",
+            "Race Owner",
+            now);
+        var member = ApplicationUser.Create(
+            $"integration|member-{suffix}",
+            "Race Member",
+            now);
+        var workspace = Workspace.Create("Constraint Workspace", $"constraint-{suffix}", now);
+        var seedAccessor = new WorkspaceContextAccessor();
+        using (seedAccessor.BeginProvisioning(workspace.Id))
+        await using (var seed = CreateDbContext(seedAccessor))
+        {
+            seed.Users.AddRange(owner, member);
+            seed.Workspaces.Add(workspace);
+            seed.WorkspaceMemberships.Add(
+                WorkspaceMembership.Create(workspace.Id, owner.Id, WorkspaceRole.Owner, now));
+            await seed.SaveChangesAsync();
+        }
+
+        await using (var firstMembership = CreateDbContext(CreateAccessor(owner.Id, workspace.Id)))
+        await using (var secondMembership = CreateDbContext(CreateAccessor(owner.Id, workspace.Id)))
+        {
+            firstMembership.WorkspaceMemberships.Add(
+                WorkspaceMembership.Create(workspace.Id, member.Id, WorkspaceRole.Viewer, now));
+            secondMembership.WorkspaceMemberships.Add(
+                WorkspaceMembership.Create(workspace.Id, member.Id, WorkspaceRole.Viewer, now));
+            var membershipResults = await Task.WhenAll(
+                CaptureAsync(() => firstMembership.SaveChangesAsync()),
+                CaptureAsync(() => secondMembership.SaveChangesAsync()));
+
+            Assert.AreEqual(1, membershipResults.Count(static exception => exception is null));
+            Assert.AreEqual(
+                1,
+                membershipResults.Count(
+                    static exception => exception is DuplicateWorkspaceMembershipException));
+        }
+
+        await using var firstProject = CreateDbContext(CreateAccessor(owner.Id, workspace.Id));
+        await using var secondProject = CreateDbContext(CreateAccessor(owner.Id, workspace.Id));
+        var projectKey = $"same-key-{suffix}";
+        firstProject.Projects.Add(Project.Create(workspace.Id, "First", projectKey, now));
+        secondProject.Projects.Add(Project.Create(workspace.Id, "Second", projectKey, now));
+        var projectResults = await Task.WhenAll(
+            CaptureAsync(() => firstProject.SaveChangesAsync()),
+            CaptureAsync(() => secondProject.SaveChangesAsync()));
+
+        Assert.AreEqual(1, projectResults.Count(static exception => exception is null));
+        Assert.AreEqual(
+            1,
+            projectResults.Count(static exception => exception is DuplicateProjectKeyException));
+    }
+
+    [TestMethod]
     public async Task Local_file_storage_uses_separate_tenant_directories()
     {
         var fileRoot = Path.Combine(
@@ -568,6 +820,21 @@ public sealed class TenantQueryFilterTests
         return (user, workspace, project);
     }
 
+    private static WorkItemStatusChangedMessage CreateNotificationMessage(
+        Guid messageId,
+        WorkOps.Domain.WorkspaceId workspaceId,
+        Guid userId,
+        DateTimeOffset occurredAt) => new(
+        messageId,
+        workspaceId.Value,
+        userId,
+        userId,
+        Guid.NewGuid(),
+        "Backlog",
+        "InProgress",
+        occurredAt,
+        "integration-test");
+
     private static WorkOpsDbContext CreateDbContext(WorkspaceContextAccessor accessor)
     {
         var options = new DbContextOptionsBuilder<WorkOpsDbContext>()
@@ -575,6 +842,31 @@ public sealed class TenantQueryFilterTests
             .Options;
 
         return new WorkOpsDbContext(options, accessor);
+    }
+
+    private static WorkspaceService CreateWorkspaceService(
+        IServiceProvider services,
+        AsyncGate gate) => new(
+        services.GetRequiredService<IdentityService>(),
+        new CoordinatedWorkspaceStore(services.GetRequiredService<IWorkspaceStore>(), gate),
+        services.GetRequiredService<IWorkspaceSubscriptionStore>(),
+        services.GetRequiredService<IUnitOfWork>(),
+        services.GetRequiredService<AuditWriter>(),
+        services.GetRequiredService<IWorkspaceContextAccessor>(),
+        services.GetRequiredService<IInputSanitizer>(),
+        services.GetRequiredService<TimeProvider>());
+
+    private static async Task<Exception?> CaptureAsync(Func<Task> operation)
+    {
+        try
+        {
+            await operation();
+            return null;
+        }
+        catch (Exception exception)
+        {
+            return exception;
+        }
     }
 
     private static ServiceProvider CreateServices(
@@ -615,6 +907,64 @@ public sealed class TenantQueryFilterTests
         var services = new ServiceCollection();
         services.AddWorkOpsApplication();
         services.AddWorkOpsInfrastructure(configuration);
+        services.AddSingleton<ICorrelationContext>(new TestCorrelationContext());
         return services.BuildServiceProvider();
+    }
+
+    private sealed class TestCorrelationContext : ICorrelationContext
+    {
+        public string CorrelationId => "integration-test";
+    }
+
+    private sealed class AsyncGate(int participantCount)
+    {
+        private readonly TaskCompletionSource _release = new(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _arrivals;
+
+        public async Task SignalAndWaitAsync(CancellationToken cancellationToken)
+        {
+            if (Interlocked.Increment(ref _arrivals) == participantCount)
+            {
+                _release.SetResult();
+            }
+
+            await _release.Task.WaitAsync(cancellationToken);
+        }
+    }
+
+    private sealed class CoordinatedWorkspaceStore(
+        IWorkspaceStore inner,
+        AsyncGate gate) : IWorkspaceStore
+    {
+        public async Task<bool> SlugExistsAsync(
+            string slug,
+            CancellationToken cancellationToken)
+        {
+            var exists = await inner.SlugExistsAsync(slug, cancellationToken);
+            await gate.SignalAndWaitAsync(cancellationToken);
+            return exists;
+        }
+
+        public void Add(Workspace workspace) => inner.Add(workspace);
+
+        public void Add(WorkspaceMembership membership) => inner.Add(membership);
+
+        public Task<WorkspaceMembership?> FindCurrentMembershipAsync(
+            Guid userId,
+            CancellationToken cancellationToken) =>
+            inner.FindCurrentMembershipAsync(userId, cancellationToken);
+
+        public Task<bool> IsCurrentMemberActiveAsync(
+            Guid userId,
+            CancellationToken cancellationToken) =>
+            inner.IsCurrentMemberActiveAsync(userId, cancellationToken);
+
+        public Task<Workspace?> GetCurrentAsync(CancellationToken cancellationToken) =>
+            inner.GetCurrentAsync(cancellationToken);
+
+        public Task<IReadOnlyList<WorkspaceMemberView>> ListCurrentMembersAsync(
+            CancellationToken cancellationToken) =>
+            inner.ListCurrentMembersAsync(cancellationToken);
     }
 }

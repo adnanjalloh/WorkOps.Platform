@@ -11,7 +11,8 @@ internal sealed class InboxMessageConfiguration : IEntityTypeConfiguration<Inbox
     public void Configure(EntityTypeBuilder<InboxMessage> builder)
     {
         builder.ToTable("inbox_messages");
-        builder.HasKey(message => new { message.WorkspaceId, message.MessageId, message.Consumer });
+        builder.HasKey(message => new { message.WorkspaceId, message.MessageId, message.Consumer })
+            .HasName("PK_inbox_messages");
         builder.Property(message => message.WorkspaceId)
             .HasConversion(id => id.Value, value => WorkspaceId.From(value));
         builder.Property(message => message.Consumer).HasMaxLength(128);

@@ -12,6 +12,8 @@ first release.
 - Save-time tenant ownership enforcement for request, background, and provisioning writes.
 - Model-driven query-filter coverage plus cross-workspace insert, update, delete, and mutation tests.
 - Scheduled/manual full-Compose golden-scenario verification with retained sanitized evidence.
+- Exact business-constraint race mapping and atomic identity/workspace provisioning.
+- Corrupt-cache recovery and attachment storage integrity/reconciliation handling.
 - Clean-room .NET 10 modular-monolith foundation.
 - Health endpoints and initial functional test.
 - Unit, integration-smoke, functional, and architecture test projects.

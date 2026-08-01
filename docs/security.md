@@ -54,7 +54,8 @@ certification claim.
 - PDF and PNG magic-byte checks, strict UTF-8/control-character checks for text, a scanner port that
   fails closed by default, and a deliberately named development-only clean scanner;
 - opaque server-generated storage names, tenant-separated paths outside the web root, SHA-256
-  metadata, and cleanup after a failed metadata transaction;
+  metadata, best-effort cleanup after a failed metadata transaction, safe missing/corrupt-content
+  handling, and an operator reconciliation tool;
 - tenant-filtered attachment metadata, work-item ownership constraints, permission-protected upload
   and download, non-disclosing cross-workspace denial, attachment download responses with
   `X-Content-Type-Options: nosniff`, and no archive support;

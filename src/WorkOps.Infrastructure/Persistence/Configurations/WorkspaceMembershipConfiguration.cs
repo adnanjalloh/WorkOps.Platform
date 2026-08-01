@@ -11,7 +11,8 @@ internal sealed class WorkspaceMembershipConfiguration : IEntityTypeConfiguratio
     public void Configure(EntityTypeBuilder<WorkspaceMembership> builder)
     {
         builder.ToTable("workspace_memberships");
-        builder.HasKey(membership => new { membership.WorkspaceId, membership.UserId });
+        builder.HasKey(membership => new { membership.WorkspaceId, membership.UserId })
+            .HasName("PK_workspace_memberships");
         builder.Property(membership => membership.WorkspaceId)
             .HasConversion(id => id.Value, value => WorkspaceId.From(value));
         builder.Property(membership => membership.Role)

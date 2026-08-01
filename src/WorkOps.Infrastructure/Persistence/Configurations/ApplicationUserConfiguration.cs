@@ -12,6 +12,8 @@ internal sealed class ApplicationUserConfiguration : IEntityTypeConfiguration<Ap
         builder.HasKey(user => user.Id);
         builder.Property(user => user.Subject).HasMaxLength(OidcSubject.MaximumLength).IsRequired();
         builder.Property(user => user.DisplayName).HasMaxLength(120).IsRequired();
-        builder.HasIndex(user => user.Subject).IsUnique();
+        builder.HasIndex(user => user.Subject)
+            .IsUnique()
+            .HasDatabaseName("UX_identity_users_subject");
     }
 }

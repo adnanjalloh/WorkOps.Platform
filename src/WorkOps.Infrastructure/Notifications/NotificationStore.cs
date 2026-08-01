@@ -52,6 +52,8 @@ internal sealed class NotificationStore(WorkOpsDbContext dbContext) : INotificat
             when (exception.InnerException is PostgresException
             {
                 SqlState: PostgresErrorCodes.UniqueViolation,
+                ConstraintName: "PK_inbox_messages" or
+                    "UX_notification_deliveries_deduplication",
             })
         {
             return false;

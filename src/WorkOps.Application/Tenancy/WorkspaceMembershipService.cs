@@ -2,13 +2,14 @@ using WorkOps.Application.Abstractions;
 using WorkOps.Application.Audit;
 using WorkOps.Application.Common.Sanitization;
 using WorkOps.Application.Common.Validation;
+using WorkOps.Application.Identity;
 using WorkOps.Domain.Identity;
 using WorkOps.Domain.Tenancy;
 
 namespace WorkOps.Application.Tenancy;
 
 public sealed class WorkspaceMembershipService(
-    IUserStore users,
+    IdentityService identityService,
     IWorkspaceStore workspaces,
     IUnitOfWork unitOfWork,
     AuditWriter auditWriter,
@@ -40,40 +41,43 @@ public sealed class WorkspaceMembershipService(
             throw new RequestValidationException("invalid_membership_role");
         }
 
-        var now = timeProvider.GetUtcNow();
-        var user = await users.FindBySubjectAsync(subject, cancellationToken);
-        if (user is null)
-        {
-            user = ApplicationUser.Create(subject, safeDisplayName, now);
-            users.Add(user);
-        }
-        else
-        {
-            user.UpdateDisplayName(safeDisplayName, now);
-        }
-
-        if (await workspaces.FindCurrentMembershipAsync(user.Id, cancellationToken) is not null)
-        {
-            throw new DuplicateWorkspaceMembershipException();
-        }
-
-        var membership = WorkspaceMembership.Create(
-            current.WorkspaceId,
-            user.Id,
-            parsedRole,
-            now);
-        workspaces.Add(membership);
-        auditWriter.Record(
-            AuditActions.MemberInvited,
-            "workspace_member",
-            user.Id,
-            now,
-            new Dictionary<string, string>(StringComparer.Ordinal)
+        return await unitOfWork.ExecuteInTransactionAsync(
+            async transactionCancellationToken =>
             {
-                ["role"] = parsedRole.ToString(),
-            });
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+                var now = timeProvider.GetUtcNow();
+                var user = await identityService.GetOrCreateAsync(
+                    new CurrentIdentity(subject, safeDisplayName),
+                    transactionCancellationToken);
+                if (await workspaces.FindCurrentMembershipAsync(
+                        user.Id,
+                        transactionCancellationToken) is not null)
+                {
+                    throw new DuplicateWorkspaceMembershipException();
+                }
 
-        return new WorkspaceMemberView(user.Id, user.DisplayName, membership.Role, membership.IsActive);
+                var membership = WorkspaceMembership.Create(
+                    current.WorkspaceId,
+                    user.Id,
+                    parsedRole,
+                    now);
+                workspaces.Add(membership);
+                auditWriter.Record(
+                    AuditActions.MemberInvited,
+                    "workspace_member",
+                    user.Id,
+                    now,
+                    new Dictionary<string, string>(StringComparer.Ordinal)
+                    {
+                        ["role"] = parsedRole.ToString(),
+                    });
+                await unitOfWork.SaveChangesAsync(transactionCancellationToken);
+
+                return new WorkspaceMemberView(
+                    user.Id,
+                    user.DisplayName,
+                    membership.Role,
+                    membership.IsActive);
+            },
+            cancellationToken);
     }
 }

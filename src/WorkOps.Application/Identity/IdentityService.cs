@@ -7,7 +7,6 @@ namespace WorkOps.Application.Identity;
 public sealed class IdentityService(
     IUserStore users,
     IWorkspaceAccessReader accessReader,
-    IUnitOfWork unitOfWork,
     IInputSanitizer sanitizer,
     TimeProvider timeProvider)
 {
@@ -32,19 +31,6 @@ public sealed class IdentityService(
         var subject = identity.Subject;
         var displayName = sanitizer.Apply(identity.DisplayName, InputProfile.PlainText, "token.name");
         var now = timeProvider.GetUtcNow();
-        var user = await users.FindBySubjectAsync(subject, cancellationToken);
-
-        if (user is null)
-        {
-            user = ApplicationUser.Create(subject, displayName, now);
-            users.Add(user);
-        }
-        else
-        {
-            user.UpdateDisplayName(displayName, now);
-        }
-
-        await unitOfWork.SaveChangesAsync(cancellationToken);
-        return user;
+        return await users.GetOrCreateAsync(subject, displayName, now, cancellationToken);
     }
 }

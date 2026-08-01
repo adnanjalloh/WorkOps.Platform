@@ -40,7 +40,9 @@ internal sealed class NotificationDeliveryConfiguration : IEntityTypeConfigurati
             delivery.SourceMessageId,
             delivery.RecipientUserId,
             delivery.Channel,
-        }).IsUnique();
+        })
+            .IsUnique()
+            .HasDatabaseName("UX_notification_deliveries_deduplication");
         builder.HasIndex(delivery => new
         {
             delivery.WorkspaceId,

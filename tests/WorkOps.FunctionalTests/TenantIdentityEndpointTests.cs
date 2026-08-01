@@ -13,6 +13,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using WorkOps.Application.Abstractions;
 using WorkOps.Application.Audit;
 using WorkOps.Application.Messaging;
 using WorkOps.Application.Tenancy;
@@ -617,6 +618,44 @@ public sealed class TenantIdentityEndpointTests
             $"/api/v1/attachments/{attachment.Id:D}",
             outsiderWorkspace.Id);
         Assert.AreEqual(HttpStatusCode.NotFound, outsiderDownload.StatusCode);
+
+        WorkOps.Domain.Files.Attachment storedAttachment;
+        IFileStorage storage;
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<WorkOpsDbContext>();
+            storedAttachment = await dbContext.Attachments
+                .IgnoreQueryFilters()
+                .SingleAsync(candidate => candidate.Id == attachment.Id);
+            storage = scope.ServiceProvider.GetRequiredService<IFileStorage>();
+        }
+
+        await storage.DeleteAsync(
+            storedAttachment.WorkspaceId,
+            storedAttachment.StorageName,
+            CancellationToken.None);
+        using var missingContent = await SendWorkspaceAsync(
+            ownerClient,
+            HttpMethod.Get,
+            $"/api/v1/attachments/{attachment.Id:D}",
+            workspace.Id);
+        Assert.AreEqual(HttpStatusCode.ServiceUnavailable, missingContent.StatusCode);
+        await AssertProblemCodeAsync(missingContent, "attachment_content_unavailable");
+
+        var corruptPng = png.ToArray();
+        corruptPng[^1] ^= 0xFF;
+        await storage.SaveAsync(
+            storedAttachment.WorkspaceId,
+            storedAttachment.StorageName,
+            corruptPng,
+            CancellationToken.None);
+        using var corruptContent = await SendWorkspaceAsync(
+            ownerClient,
+            HttpMethod.Get,
+            $"/api/v1/attachments/{attachment.Id:D}",
+            workspace.Id);
+        Assert.AreEqual(HttpStatusCode.ServiceUnavailable, corruptContent.StatusCode);
+        await AssertProblemCodeAsync(corruptContent, "attachment_content_unavailable");
 
         using var mismatch = await SendWorkspaceFileAsync(
             ownerClient,

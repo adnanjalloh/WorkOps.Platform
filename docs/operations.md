@@ -98,6 +98,26 @@ Run the complete local backend scenario with `./scripts/demo.sh --start` or
 `./scripts/demo.ps1 -Start`. Successful resource IDs and opaque versions are stored under the
 ignored `.local/` directory; access tokens are not intentionally printed or persisted by the scripts.
 
+### Attachment reconciliation
+
+The metadata transaction removes a newly stored object when its database commit fails. If that
+best-effort cleanup also fails, an operator log records only the generated attachment ID and the
+original database exception is preserved. Downloads validate stored length and SHA-256 metadata;
+missing or corrupt content returns a safe `503 attachment_content_unavailable` and emits an operator
+alert without logging filenames or content.
+
+Run the bounded reconciliation tool with an absolute `WORKOPS_FILES_ROOT` and standard libpq
+`PGHOST`, `PGPORT`, `PGDATABASE`, and `PGUSER` configuration:
+
+```bash
+./scripts/reconcile-attachments.sh --report
+```
+
+It lists opaque database paths whose objects are missing and opaque storage paths with no metadata
+row. After reviewing the report and database backup, `--delete-orphans` removes only paths matching
+the generated tenant/storage-name format. It never deletes database rows or attempts to reconstruct
+missing content.
+
 ## Release process
 
 The release workflow accepts only `vMAJOR.MINOR.PATCH` tags at the current `master` head. A read-only

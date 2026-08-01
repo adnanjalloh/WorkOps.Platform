@@ -69,6 +69,18 @@ internal sealed class RedisFeatureCache(IConnectionMultiplexer connection) : IFe
         {
             CacheResults.Add(1, new KeyValuePair<string, object?>("result", "unavailable"));
         }
+        catch (JsonException)
+        {
+            CacheResults.Add(1, new KeyValuePair<string, object?>("result", "corrupt"));
+            try
+            {
+                await database.KeyDeleteAsync(cacheKey);
+            }
+            catch (RedisException)
+            {
+                CacheResults.Add(1, new KeyValuePair<string, object?>("result", "unavailable"));
+            }
+        }
 
         return await factory(cancellationToken);
     }
@@ -91,7 +103,18 @@ internal sealed class RedisFeatureCache(IConnectionMultiplexer connection) : IFe
     private static string CacheKey(WorkspaceId workspaceId) =>
         $"workops:{workspaceId.Value:N}:features";
 
-    private static FeatureSnapshot Deserialize(RedisValue value) =>
-        JsonSerializer.Deserialize<FeatureSnapshot>((string)value!, SerializerOptions)
-        ?? throw new InvalidOperationException("Cached feature data is invalid.");
+    private static FeatureSnapshot Deserialize(RedisValue value)
+    {
+        var snapshot = JsonSerializer.Deserialize<FeatureSnapshot>((string)value!, SerializerOptions);
+        if (snapshot is null ||
+            string.IsNullOrWhiteSpace(snapshot.Plan) ||
+            snapshot.MaximumActiveProjects <= 0 ||
+            snapshot.ActiveProjectCount < 0 ||
+            snapshot.ActiveProjectCount > snapshot.MaximumActiveProjects)
+        {
+            throw new JsonException("Cached feature data does not match the expected schema.");
+        }
+
+        return snapshot;
+    }
 }

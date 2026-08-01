@@ -19,6 +19,8 @@ internal sealed class WorkspaceConfiguration : IEntityTypeConfiguration<Workspac
             .HasConversion<string>()
             .HasMaxLength(32)
             .IsRequired();
-        builder.HasIndex(workspace => workspace.Slug).IsUnique();
+        builder.HasIndex(workspace => workspace.Slug)
+            .IsUnique()
+            .HasDatabaseName("UX_workspaces_slug");
     }
 }

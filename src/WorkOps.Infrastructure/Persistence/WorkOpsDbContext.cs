@@ -3,6 +3,8 @@ using Npgsql;
 using WorkOps.Application.Abstractions;
 using WorkOps.Application.Common;
 using WorkOps.Application.Idempotency;
+using WorkOps.Application.Identity;
+using WorkOps.Application.Projects;
 using WorkOps.Application.Tenancy;
 using WorkOps.Domain;
 using WorkOps.Domain.Audit;
@@ -108,14 +110,15 @@ public sealed class WorkOpsDbContext(
         {
             throw new ConcurrencyConflictException();
         }
-        catch (DbUpdateException exception) when (
-            exception.InnerException is PostgresException
-            {
-                SqlState: PostgresErrorCodes.UniqueViolation,
-                ConstraintName: "PK_idempotency_records",
-            })
+        catch (DbUpdateException exception)
         {
-            throw new IdempotencyRaceException();
+            var mappedException = MapKnownConstraint(exception);
+            if (mappedException is not null)
+            {
+                throw mappedException;
+            }
+
+            throw;
         }
     }
 
@@ -133,15 +136,32 @@ public sealed class WorkOpsDbContext(
         {
             throw new ConcurrencyConflictException();
         }
-        catch (DbUpdateException exception) when (
-            exception.InnerException is PostgresException
-            {
-                SqlState: PostgresErrorCodes.UniqueViolation,
-                ConstraintName: "PK_idempotency_records",
-            })
+        catch (DbUpdateException exception)
         {
-            throw new IdempotencyRaceException();
+            var mappedException = MapKnownConstraint(exception);
+            if (mappedException is not null)
+            {
+                throw mappedException;
+            }
+
+            throw;
         }
+    }
+
+    public async Task<T> ExecuteInTransactionAsync<T>(
+        Func<CancellationToken, Task<T>> operation,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
+        var strategy = Database.CreateExecutionStrategy();
+
+        return await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await Database.BeginTransactionAsync(cancellationToken);
+            var result = await operation(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return result;
+        });
     }
 
     private void EnforceTenantWriteBoundary()
@@ -178,5 +198,26 @@ public sealed class WorkOpsDbContext(
                 throw new TenantWriteBoundaryException();
             }
         }
+    }
+
+    private static Exception? MapKnownConstraint(DbUpdateException exception)
+    {
+        if (exception.InnerException is not PostgresException
+            {
+                SqlState: PostgresErrorCodes.UniqueViolation,
+            } postgresException)
+        {
+            return null;
+        }
+
+        return postgresException.ConstraintName switch
+        {
+            "UX_identity_users_subject" => new DuplicateIdentitySubjectException(),
+            "UX_workspaces_slug" => new DuplicateWorkspaceSlugException(),
+            "PK_workspace_memberships" => new DuplicateWorkspaceMembershipException(),
+            "UX_projects_workspace_key" => new DuplicateProjectKeyException(),
+            "PK_idempotency_records" => new IdempotencyRaceException(),
+            _ => null,
+        };
     }
 }

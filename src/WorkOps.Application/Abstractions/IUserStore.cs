@@ -6,5 +6,9 @@ public interface IUserStore
 {
     Task<ApplicationUser?> FindBySubjectAsync(string subject, CancellationToken cancellationToken);
 
-    void Add(ApplicationUser user);
+    Task<ApplicationUser> GetOrCreateAsync(
+        string subject,
+        string displayName,
+        DateTimeOffset now,
+        CancellationToken cancellationToken);
 }

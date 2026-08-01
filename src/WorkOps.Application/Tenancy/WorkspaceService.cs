@@ -31,28 +31,39 @@ public sealed class WorkspaceService(
             throw new DuplicateWorkspaceSlugException();
         }
 
-        var owner = await identityService.GetOrCreateAsync(identity, cancellationToken);
-        var now = timeProvider.GetUtcNow();
-        var workspace = Workspace.Create(safeName, safeSlug, now);
-        var membership = WorkspaceMembership.Create(workspace.Id, owner.Id, WorkspaceRole.Owner, now);
-
-        using var provisioning = workspaceContext.BeginProvisioning(workspace.Id);
-        workspaces.Add(workspace);
-        workspaces.Add(membership);
-        subscriptions.Add(WorkspaceSubscription.CreateStarter(workspace.Id, now));
-        auditWriter.RecordFor(
-            workspace.Id,
-            owner.Id,
-            AuditActions.WorkspaceCreated,
-            "workspace",
-            workspace.Id.Value,
-            now,
-            new Dictionary<string, string>(StringComparer.Ordinal)
+        return await unitOfWork.ExecuteInTransactionAsync(
+            async transactionCancellationToken =>
             {
-                ["status"] = workspace.Status.ToString(),
-            });
-        await unitOfWork.SaveChangesAsync(cancellationToken);
-        return workspace;
+                var owner = await identityService.GetOrCreateAsync(
+                    identity,
+                    transactionCancellationToken);
+                var now = timeProvider.GetUtcNow();
+                var workspace = Workspace.Create(safeName, safeSlug, now);
+                var membership = WorkspaceMembership.Create(
+                    workspace.Id,
+                    owner.Id,
+                    WorkspaceRole.Owner,
+                    now);
+
+                using var provisioning = workspaceContext.BeginProvisioning(workspace.Id);
+                workspaces.Add(workspace);
+                workspaces.Add(membership);
+                subscriptions.Add(WorkspaceSubscription.CreateStarter(workspace.Id, now));
+                auditWriter.RecordFor(
+                    workspace.Id,
+                    owner.Id,
+                    AuditActions.WorkspaceCreated,
+                    "workspace",
+                    workspace.Id.Value,
+                    now,
+                    new Dictionary<string, string>(StringComparer.Ordinal)
+                    {
+                        ["status"] = workspace.Status.ToString(),
+                    });
+                await unitOfWork.SaveChangesAsync(transactionCancellationToken);
+                return workspace;
+            },
+            cancellationToken);
     }
 
     public Task<Workspace?> GetCurrentAsync(CancellationToken cancellationToken) =>

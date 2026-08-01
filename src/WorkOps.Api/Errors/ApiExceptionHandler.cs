@@ -142,6 +142,15 @@ internal sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) :
                     cancellationToken);
                 return true;
 
+            case AttachmentContentUnavailableException:
+                await WriteProblemAsync(
+                    httpContext,
+                    StatusCodes.Status503ServiceUnavailable,
+                    "Attachment content is unavailable",
+                    "attachment_content_unavailable",
+                    cancellationToken);
+                return true;
+
             case IdempotencyKeyConflictException:
                 await WriteProblemAsync(
                     httpContext,
