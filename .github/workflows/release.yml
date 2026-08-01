@@ -60,7 +60,7 @@ jobs:
 
       - name: Test with coverage
         run: >-
-          dotnet test --configuration Release --no-build --logger "trx"
+          dotnet test --configuration Release --no-build --maxcpucount:1 --logger "trx"
           --collect:"XPlat Code Coverage" --results-directory artifacts/test-results
           -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[WorkOps.*Tests]*"
 

@@ -11,8 +11,8 @@ secure file handling, OpenTelemetry observability, and GitHub Actions delivery.
 
 ## Status
 
-**Portfolio release candidate - not a production deployment.** Local verification on 2026-08-01
-completed with a zero-warning Release build, 88 passing tests, 90.7% line coverage, and 49.7% branch
+**Portfolio release candidate - not a production deployment.** Local verification on 2026-08-02
+completed with a zero-warning Release build, 100 passing tests, 90.3% line coverage, and 48.2% branch
 coverage. Hosted GitHub Actions verification is pending the private first push; CI enforces floors
 of 70% and 35%. There is no hosted demo, and no public release is claimed.
 
@@ -181,8 +181,8 @@ dotnet build -c Release --no-restore
 dotnet test -c Release --no-build --logger "trx" --collect:"XPlat Code Coverage"
 ```
 
-The 88 tests comprise 51 unit, 13 PostgreSQL/Redis/RabbitMQ/storage integration, 18 full-host
-functional, and 6 architecture tests. The dated local result is 90.7% line and 49.7% branch
+The 100 tests comprise 53 unit, 19 PostgreSQL/Redis/RabbitMQ/storage integration, 21 full-host
+functional, and 7 architecture tests. The dated local result is 90.3% line and 48.2% branch
 coverage. CI merges coverage, publishes HTML/Cobertura/Markdown evidence, and enforces the 70% line
 / 35% branch floors. A scheduled/manual workflow runs the complete Compose golden scenario and
 retains sanitized evidence. See [testing](docs/testing.md).
