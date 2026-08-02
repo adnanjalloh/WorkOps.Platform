@@ -207,7 +207,7 @@ diagnostic correlation, and the release process.
 - **2-minute hiring-manager tour:** [overview](#thirty-second-overview) -> [architecture](#architecture) -> [demo](#demo)
 - **10-minute backend review:** [tenant boundary](src/WorkOps.Api/Tenancy/WorkspaceContextMiddleware.cs) -> [work-item service](src/WorkOps.Application/WorkItems/WorkItemService.cs) -> [outbox worker](src/WorkOps.Infrastructure/Messaging/OutboxWorker.cs) -> [golden-flow test](tests/WorkOps.FunctionalTests/TenantIdentityEndpointTests.cs)
 - **Security review:** [threat model](docs/threat-model.md) -> [ASVS map](docs/asvs-map.md) -> [security controls](docs/security.md) -> [CI](.github/workflows/ci.yml)
-- **Delivery review:** [CI](.github/workflows/ci.yml) -> [release workflow](.github/workflows/release.yml) -> [Dockerfile](Dockerfile) -> [operations](docs/operations.md)
+- **Delivery review:** [CI](.github/workflows/ci.yml) -> [release workflow](.github/workflows/release.yaml) -> [Dockerfile](Dockerfile) -> [operations](docs/operations.md)
 
 ## Repository map
 
