@@ -39,13 +39,17 @@ Local Bash and PowerShell demo runs reported the idempotent project replay, view
 `409`, outsider `404`, asynchronous audit/notification evidence, and a non-duplicating repeat path.
 The scheduled/manual `Full stack demo` workflow is configured to run the Bash scenario from a clean
 host, screen its log for bearer/JWT/credential markers before displaying or uploading it, and retain
-synthetic log/JSON evidence only when that fail-closed gate passes. Hosted evidence remains pending.
-These scripts are reviewer tools, not substitutes for the automated suites.
+synthetic log/JSON evidence only when that fail-closed gate passes. The [public full-stack run] passed
+at the reviewed commit. These scripts are reviewer tools, not substitutes for the automated suites.
 
 Local verification on 2026-08-02 reported 90.3% line coverage and 48.9% branch coverage, with all 106
-tests passing. Hosted GitHub Actions evidence is pending the private first push. CI merges collector
+tests passing. Public [CI] and [CodeQL] runs also passed at the reviewed commit. CI merges collector
 output, publishes HTML/Cobertura/Markdown evidence, and requires at least 70% lines and 35% branches.
 These are regression floors rather than quality targets.
+
+[public full-stack run]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/30727906844
+[CI]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/30727069465
+[CodeQL]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/30727069476
 
 ## Planned suites
 

@@ -13,8 +13,13 @@ secure file handling, OpenTelemetry observability, and GitHub Actions delivery.
 
 **Portfolio release candidate - not a production deployment.** Local verification on 2026-08-02
 completed with a zero-warning Release build, 106 passing tests, 90.3% line coverage, and 48.9% branch
-coverage. Hosted GitHub Actions verification is pending the private first push; CI enforces floors
-of 70% and 35%. There is no hosted demo, and no public release is claimed.
+coverage. Public GitHub Actions verification completed on the reviewed commit: [CI], [CodeQL], and
+the [full-stack scenario] passed. CI enforces floors of 70% and 35%. There is no hosted application
+deployment, and no versioned release is claimed.
+
+[CI]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/30727069465
+[CodeQL]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/30727069476
+[full-stack scenario]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/30727906844
 
 - **Implemented:** tenant/identity boundary, projects and work items, audit/outbox/messaging,
   notifications, Redis-backed feature limits, secure attachments, observability, hardening, and
