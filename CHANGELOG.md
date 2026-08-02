@@ -11,6 +11,7 @@ first release.
 - Exact, case-sensitive, printable-ASCII OIDC subject validation and storage with full-host boundary tests.
 - Save-time tenant ownership enforcement for every filtered type, including the `Workspace` root.
 - Model-driven query-filter/write-resolver coverage plus cross-workspace root and child write tests.
+- Deterministic visual asset generation with source, checksums, and licensing documentation.
 - Scheduled/manual full-Compose golden-scenario verification with fail-closed evidence screening.
 - Exact business-constraint race mapping and atomic identity/workspace provisioning.
 - Corrupt-cache recovery and attachment storage integrity/reconciliation handling.
@@ -64,5 +65,7 @@ first release.
 - Synthetic Keycloak demo identities with a CLI-to-API audience mapper and private-network
   backchannel discovery.
 - Runnable Bash and PowerShell golden-scenario clients plus a named-request HTTP collection.
+- Recruiter-focused README, implementation sequence, terminal walkthrough, repository metadata,
+  and a vendor-logo-free social preview asset.
 - StackExchange.Redis 3.1 with the current stable client improvements.
 - MIT license for the independently written portfolio source.

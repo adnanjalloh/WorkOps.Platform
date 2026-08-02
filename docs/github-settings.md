@@ -12,6 +12,7 @@ before making the repository public or creating the first release.
   organization policy supports it.
 - [ ] Disable unused merge methods and automatically delete merged branches.
 - [ ] Apply the exact description and topics from [repository metadata](repository-metadata.md).
+- [ ] Upload `docs/assets/workops-social-preview.png` as the social preview.
 
 ## `master` ruleset
 

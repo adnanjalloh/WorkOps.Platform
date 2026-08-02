@@ -85,3 +85,6 @@ Do not reuse the development realm, client flow, usernames, or password in a dep
   [worker](../src/WorkOps.Infrastructure/Messaging/OutboxWorker.cs)
 - Automated twin: [functional golden-flow test](../tests/WorkOps.FunctionalTests/TenantIdentityEndpointTests.cs)
 
+The [illustrated golden-scenario summary](assets/workops-demo.gif) depicts the expected local flow;
+it is not a terminal recording and contains no tokens, browser data, private services, or real
+organizations. See the [asset provenance record](assets/README.md).

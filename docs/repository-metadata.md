@@ -31,4 +31,7 @@ cloud-provider topics to the current repository.
 ## Website and preview
 
 - Leave the website field empty until a healthy hosted demo exists.
+- Upload [workops-social-preview.png](assets/workops-social-preview.png) as the repository social
+  preview. It is 1280x640, uses no company branding or vendor logos, and names only implemented
+  architecture components.
 - Enable Discussions only if the maintainer intends to monitor them.

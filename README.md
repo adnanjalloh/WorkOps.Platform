@@ -163,11 +163,14 @@ dotnet run --project src/WorkOps.Api
 
 ## Demo
 
+![Illustrated golden-scenario summary](docs/assets/workops-demo.gif)
 
 The script obtains local synthetic tokens without intentionally displaying or persisting them,
 creates two workspaces, assigns
 contributor and viewer roles, replays an idempotent project request, executes the work-item flow,
 checks `403`, `409`, and `404` boundaries, and waits for audit/outbox notification evidence.
+This asset is an illustration, not a terminal recording; its source and license are recorded in
+[asset provenance](docs/assets/README.md).
 
 Use [demo/workops.http](demo/workops.http) to inspect each request manually. Change its `runId`
 before a fresh run. The imported local users are `demo-owner`, `demo-contributor`, `demo-viewer`,
