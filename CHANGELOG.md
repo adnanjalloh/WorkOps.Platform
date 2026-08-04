@@ -8,6 +8,8 @@ first release.
 
 ### Added
 
+- Approval-gated release provenance and SPDX SBOM attestations bound to the immutable GHCR digest,
+  with prepared `v0.1.0` notes and consumer verification commands.
 - Exact, case-sensitive, printable-ASCII OIDC subject validation and storage with full-host boundary tests.
 - Save-time tenant ownership enforcement for every filtered type, including the `Workspace` root.
 - Model-driven query-filter/write-resolver coverage plus cross-workspace root and child write tests.

@@ -141,7 +141,7 @@ The live script also checks that a viewer receives `403`, an exact project repla
 - locked dependencies, full-commit workflow pins, Gitleaks, CodeQL, dependency review, NuGet audit,
   coverage floors, and high/critical image scanning;
 - tag-gated release verification, commit-addressed container tags, SPDX JSON SBOM, and digest
-  evidence, with publication protected by a reviewable environment.
+  evidence, with approval-gated build-provenance and SBOM attestations bound to the registry digest.
 
 See [security controls](docs/security.md), [threat model](docs/threat-model.md), and the
 [OWASP ASVS 5.0 evidence map](docs/asvs-map.md). This project does not claim certification.
@@ -237,9 +237,10 @@ diagnostic correlation, and the release process.
 
 This is a modular monolith, not a microservice system. PostgreSQL row-level security, a production
 OIDC provider configuration, durable object storage, monitored antivirus, a hosted telemetry
-backend, signing/provenance attestation, and a hosted demo are deliberately outside the local
-portfolio release. The current controls and residual risks are explicit in the ADRs and threat
-model.
+backend, and a hosted demo are deliberately outside the local portfolio release. Provenance and
+SBOM attestation are configured for the protected release path but do not exist as generated public
+evidence until an approved release completes. The current controls and residual risks are explicit
+in the ADRs and threat model.
 
 - [ADR 0001 - modular monolith](docs/adr/0001-modular-monolith.md)
 - [ADR 0002 - tenant isolation](docs/adr/0002-tenant-isolation.md)
@@ -257,7 +258,7 @@ model.
 - [x] Observability, HTTP hardening, security automation, SBOM, and release evidence
 - [x] Runnable Bash/PowerShell golden-scenario demo and recruiter review paths
 - [ ] Replace local scanner/storage/identity components before any production deployment
-- [ ] Add artifact signing and provenance attestation when a public release is intentionally made
+- [x] Prepare registry-digest provenance and SPDX SBOM attestations for an approved public release
 
 See [CHANGELOG](CHANGELOG.md), [CONTRIBUTING](CONTRIBUTING.md), [SECURITY](SECURITY.md), and the
 [repository settings checklist](docs/github-settings.md). Portfolio progress is tracked in

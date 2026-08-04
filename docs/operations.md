@@ -136,7 +136,35 @@ job restores locked dependencies, verifies formatting, builds, tests with the sa
 CI, audits NuGet packages, scans Git history, builds and scans the container, generates an SPDX JSON
 SBOM, and packages a checksummed candidate. Only after it succeeds does the protected publication
 job receive write permissions, load that exact candidate, publish the version and commit tags to
-GHCR, record the immutable registry digest, and create release notes with the evidence attached.
+GHCR, read both tags back from the registry, and require them to resolve to the same immutable
+digest. The publication job creates GitHub build-provenance and SPDX SBOM attestations for that
+digest, pushes the attestation bundles to GHCR, and creates the release with its prepared notes,
+SBOM, and digest evidence attached. Optional artifact-metadata storage records are deliberately
+disabled because this repository is owned by a personal account.
+
+The attestations are provenance and integrity evidence generated with a short-lived workflow
+identity. They are not a claim that a separate traditional code-signing mechanism exists.
+
+After an approved `v0.1.0` publication, authenticate to GHCR and verify the build provenance:
+
+```bash
+gh attestation verify \
+  oci://ghcr.io/adnanjalloh/workops.platform:v0.1.0 \
+  -R adnanjalloh/WorkOps.Platform
+```
+
+Verify the SPDX SBOM attestation separately because it uses a non-default predicate type:
+
+```bash
+gh attestation verify \
+  oci://ghcr.io/adnanjalloh/workops.platform:v0.1.0 \
+  -R adnanjalloh/WorkOps.Platform \
+  --predicate-type https://spdx.dev/Document/v2.3
+```
+
+These commands cannot succeed before the image and attestations are intentionally published. The
+image name and casing must be confirmed against the resulting GHCR package before recording final
+release evidence.
 
 Configure the `release` environment before publishing and add a required reviewer only when that
 reviewer is genuinely independent. Treat tags as immutable and protect `v*` tags from update or

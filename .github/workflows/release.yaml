@@ -122,6 +122,7 @@ jobs:
         run: |
           docker save --output artifacts/workops-platform-image.tar workops-platform:release-candidate
           sha256sum artifacts/workops-platform-image.tar > artifacts/workops-platform-image.tar.sha256
+          cp "docs/releases/${GITHUB_REF_NAME}.md" artifacts/release-notes.md
 
       - name: Upload verified release candidate
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -131,6 +132,7 @@ jobs:
             artifacts/workops-platform-image.tar
             artifacts/workops-platform-image.tar.sha256
             artifacts/workops-platform-${{ github.ref_name }}.spdx.json
+            artifacts/release-notes.md
           if-no-files-found: error
           retention-days: 3
 
@@ -142,7 +144,9 @@ jobs:
     environment: release
     permissions:
       actions: read
+      attestations: write
       contents: write
+      id-token: write
       packages: write
 
     steps:
@@ -163,6 +167,7 @@ jobs:
         shell: bash
         run: |
           repository=$(printf '%s' "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')
+          echo "name=ghcr.io/${repository}" >> "$GITHUB_OUTPUT"
           echo "version=ghcr.io/${repository}:${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
           echo "commit=ghcr.io/${repository}:sha-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
 
@@ -180,19 +185,54 @@ jobs:
           docker push "${{ steps.image.outputs.version }}"
           docker push "${{ steps.image.outputs.commit }}"
 
+      - name: Resolve immutable registry digest
+        id: digest
+        shell: bash
+        env:
+          VERSION_IMAGE: ${{ steps.image.outputs.version }}
+          COMMIT_IMAGE: ${{ steps.image.outputs.commit }}
+        run: |
+          version_manifest=$(docker buildx imagetools inspect "$VERSION_IMAGE" --format '{{json .Manifest}}')
+          commit_manifest=$(docker buildx imagetools inspect "$COMMIT_IMAGE" --format '{{json .Manifest}}')
+          version_digest=$(jq -er '.digest | select(test("^sha256:[0-9a-f]{64}$"))' <<< "$version_manifest")
+          commit_digest=$(jq -er '.digest | select(test("^sha256:[0-9a-f]{64}$"))' <<< "$commit_manifest")
+
+          if [[ "$version_digest" != "$commit_digest" ]]; then
+            echo "Version and commit tags resolved to different registry digests." >&2
+            exit 1
+          fi
+
+          echo "digest=$version_digest" >> "$GITHUB_OUTPUT"
+
       - name: Record image evidence
         shell: bash
         run: |
-          digest=$(docker inspect --format='{{index .RepoDigests 0}}' "${{ steps.image.outputs.version }}")
           printf 'Version tag: %s\nCommit tag: %s\nDigest: %s\n' \
             "${{ steps.image.outputs.version }}" \
             "${{ steps.image.outputs.commit }}" \
-            "$digest" > artifacts/container-image.txt
+            "${{ steps.digest.outputs.digest }}" > artifacts/container-image.txt
+
+      - name: Attest build provenance
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        with:
+          subject-name: ${{ steps.image.outputs.name }}
+          subject-digest: ${{ steps.digest.outputs.digest }}
+          push-to-registry: true
+          create-storage-record: false
+
+      - name: Attest SPDX SBOM
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        with:
+          subject-name: ${{ steps.image.outputs.name }}
+          subject-digest: ${{ steps.digest.outputs.digest }}
+          sbom-path: artifacts/workops-platform-${{ github.ref_name }}.spdx.json
+          push-to-registry: true
+          create-storage-record: false
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
-          generate_release_notes: true
+          body_path: artifacts/release-notes.md
           make_latest: true
           files: |
             artifacts/workops-platform-${{ github.ref_name }}.spdx.json
