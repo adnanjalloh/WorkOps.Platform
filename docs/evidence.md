@@ -4,7 +4,9 @@ This page separates dated generated evidence from repository configuration and f
 
 ## Current verified baseline
 
-The 2026-08-04 local verification for commit `7e15cf45eaa6c3b23ffafec078cf53f8b1d8cb01` is recorded in [issue #3](https://github.com/adnanjalloh/WorkOps.Platform/issues/3) and proposed in [draft PR #5](https://github.com/adnanjalloh/WorkOps.Platform/pull/5).
+The 2026-08-04 local verification for commit `7e15cf45eaa6c3b23ffafec078cf53f8b1d8cb01`
+is recorded in [issue #3](https://github.com/adnanjalloh/WorkOps.Platform/issues/3) and
+[merged PR #5](https://github.com/adnanjalloh/WorkOps.Platform/pull/5).
 
 | Evidence | Result |
 | --- | --- |
@@ -28,12 +30,27 @@ repository API after enablement. The configured social preview was visually veri
 settings against `docs/assets/workops-social-preview.png`. These observations cover only those two
 settings and do not imply that every item in the repository-settings checklist is complete.
 
-## Release readiness boundary
+## Verified `v0.1.0` release evidence
 
-[Issue #7](https://github.com/adnanjalloh/WorkOps.Platform/issues/7) scopes preparation of the
-`v0.1.0` provenance and SBOM path. Workflow configuration is not release evidence: no tag, GitHub
-Release, GHCR package, registry digest, or attestation is claimed until the protected workflow runs
-after separate approval and its outputs are independently verified.
+The protected [release workflow](https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/30901202020)
+completed on 2026-08-04 for tag `v0.1.0` and commit
+`ed44d5248baf268137fedce75cf6b0c39bf3044a`.
+
+| Evidence | Verified result |
+| --- | --- |
+| GitHub Release | [v0.1.0](https://github.com/adnanjalloh/WorkOps.Platform/releases/tag/v0.1.0), published and not a prerelease |
+| Public package | [`ghcr.io/adnanjalloh/workops.platform`](https://github.com/users/adnanjalloh/packages/container/package/workops.platform), linked to this repository |
+| Version tag | `ghcr.io/adnanjalloh/workops.platform:v0.1.0` |
+| Commit tag | `ghcr.io/adnanjalloh/workops.platform:sha-ed44d5248baf268137fedce75cf6b0c39bf3044a` |
+| Registry digest | `sha256:0297c341cf86d056163e167a71ea4789d316bbb0ecaaf2950ce69f3e20debd5a` for both tags |
+| Release assets | Digest evidence plus an SPDX 2.3 JSON SBOM; downloaded asset digests matched GitHub metadata |
+| Build provenance | One attestation verified for the public registry digest |
+| SPDX SBOM | One `https://spdx.dev/Document/v2.3` attestation verified for the same digest |
+
+The registry digest was resolved without stored registry credentials. Both attestations were
+verified with GitHub CLI against `adnanjalloh/WorkOps.Platform`. These attestations establish
+provenance and integrity for the named image digest; they are not a separate traditional
+code-signing mechanism or evidence of a production deployment.
 
 ## Public hosted evidence
 

@@ -3,19 +3,25 @@
 A production-minded ASP.NET Core/.NET 10 workflow API that makes tenant isolation, reliable
 messaging, secure file boundaries, observability, testing, and delivery controls easy to review.
 
+[![GitHub Release](https://img.shields.io/github/v/release/adnanjalloh/WorkOps.Platform?label=release)](https://github.com/adnanjalloh/WorkOps.Platform/releases/tag/v0.1.0)
+
 > Portfolio project by Adnan Alloh, Senior .NET Backend Engineer. All users, organizations, data,
 > credentials, and infrastructure values in this repository are synthetic and local-only.
 
-## Portfolio release candidate
+## Verified portfolio release
 
 **Not a production deployment.** Dated local verification reports a zero-warning Release build, 106
 passing tests, 90.3% line coverage, and 48.9% branch coverage. Public [CI], [CodeQL], and the
 [full-stack scenario] passed on the reviewed commit. CI enforces 70% line and 35% branch floors.
-There is no hosted application deployment or intentionally published versioned release.
+The protected [v0.1.0 release] published a [public GHCR package] from commit `ed44d524` with an
+attached SPDX 2.3 SBOM, immutable digest evidence, and independently verified build-provenance and
+SBOM attestations. There is no hosted application deployment.
 
 [CI]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/30727069465
 [CodeQL]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/30727069476
 [full-stack scenario]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/30727906844
+[v0.1.0 release]: https://github.com/adnanjalloh/WorkOps.Platform/releases/tag/v0.1.0
+[public GHCR package]: https://github.com/users/adnanjalloh/packages/container/package/workops.platform
 
 - **Tenant safety:** validated identity plus active membership, default-deny data access, save-time
   write guards, permission policies, and non-disclosing cross-workspace denial.
@@ -141,7 +147,8 @@ The live script also checks that a viewer receives `403`, an exact project repla
 - locked dependencies, full-commit workflow pins, Gitleaks, CodeQL, dependency review, NuGet audit,
   coverage floors, and high/critical image scanning;
 - tag-gated release verification, commit-addressed container tags, SPDX JSON SBOM, and digest
-  evidence, with approval-gated build-provenance and SBOM attestations bound to the registry digest.
+  evidence, with verified build-provenance and SBOM attestations bound to the public registry
+  digest.
 
 See [security controls](docs/security.md), [threat model](docs/threat-model.md), and the
 [OWASP ASVS 5.0 evidence map](docs/asvs-map.md). This project does not claim certification.
@@ -238,9 +245,9 @@ diagnostic correlation, and the release process.
 This is a modular monolith, not a microservice system. PostgreSQL row-level security, a production
 OIDC provider configuration, durable object storage, monitored antivirus, a hosted telemetry
 backend, and a hosted demo are deliberately outside the local portfolio release. Provenance and
-SBOM attestation are configured for the protected release path but do not exist as generated public
-evidence until an approved release completes. The current controls and residual risks are explicit
-in the ADRs and threat model.
+SBOM attestations exist for the published `v0.1.0` image digest; that evidence applies only to the
+recorded release workflow and does not establish production suitability. The current controls and
+residual risks are explicit in the ADRs and threat model.
 
 - [ADR 0001 - modular monolith](docs/adr/0001-modular-monolith.md)
 - [ADR 0002 - tenant isolation](docs/adr/0002-tenant-isolation.md)
