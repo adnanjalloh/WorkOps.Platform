@@ -1,34 +1,42 @@
 # WorkOps.Platform
 
-A production-minded multi-tenant workflow API built with ASP.NET Core and .NET 10.
-
-It demonstrates tenant isolation, OIDC/JWT authentication, permission-based authorization,
-PostgreSQL/EF Core persistence, Redis caching, reliable outbox processing, RabbitMQ messaging,
-secure file handling, OpenTelemetry observability, and GitHub Actions delivery.
+A production-minded ASP.NET Core/.NET 10 workflow API that makes tenant isolation, reliable
+messaging, secure file boundaries, observability, testing, and delivery controls easy to review.
 
 > Portfolio project by Adnan Alloh, Senior .NET Backend Engineer. All users, organizations, data,
 > credentials, and infrastructure values in this repository are synthetic and local-only.
 
-## Status
+## Portfolio release candidate
 
-**Portfolio release candidate - not a production deployment.** Local verification on 2026-08-02
-completed with a zero-warning Release build, 106 passing tests, 90.3% line coverage, and 48.9% branch
-coverage. Public GitHub Actions verification completed on the reviewed commit: [CI], [CodeQL], and
-the [full-stack scenario] passed. CI enforces floors of 70% and 35%. There is no hosted application
-deployment, and no versioned release is claimed.
+**Not a production deployment.** Dated local verification reports a zero-warning Release build, 106
+passing tests, 90.3% line coverage, and 48.9% branch coverage. Public [CI], [CodeQL], and the
+[full-stack scenario] passed on the reviewed commit. CI enforces 70% line and 35% branch floors.
+There is no hosted application deployment or intentionally published versioned release.
 
 [CI]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/30727069465
 [CodeQL]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/30727069476
 [full-stack scenario]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/30727906844
 
-- **Implemented:** tenant/identity boundary, projects and work items, audit/outbox/messaging,
-  notifications, Redis-backed feature limits, secure attachments, observability, hardening, and
-  release automation.
-- **Evidence boundary:** local results are dated above; dependency, history, and image scans remain
-  configured hosted gates rather than timeless pass claims.
-- **Local demo:** one command runs the real containerized golden scenario with synthetic users.
-- **Production boundary:** the development file scanner, temporary file storage, local identity
-  realm, and local credentials must be replaced for a real deployment.
+- **Tenant safety:** validated identity plus active membership, default-deny data access, save-time
+  write guards, permission policies, and non-disclosing cross-workspace denial.
+- **Reliable delivery:** optimistic concurrency, idempotent commands, atomic audit/outbox writes,
+  publisher confirmation, retries, and duplicate-safe notification effects.
+- **Operational proof:** PostgreSQL, Redis, RabbitMQ, Keycloak, OpenTelemetry instrumentation,
+  structured logs, health checks, Docker, CI, CodeQL, and a synthetic golden scenario.
+- **Evidence boundary:** results are dated and commit-specific; configured scans are not presented
+  as timeless pass claims.
+
+**Review:** [2-minute guide](docs/reviewer-guide.md) · [case study](docs/portfolio-case-study.md) ·
+[evidence](docs/evidence.md) · [architecture](docs/architecture.md) · [security](docs/security.md)
+
+**Run the golden scenario:**
+
+```bash
+./scripts/demo.sh --start
+```
+
+> Production boundary: the local identity realm, development scanner, temporary file storage, and
+> local credentials must be replaced and operated appropriately for a real deployment.
 
 ## Thirty-second overview
 
@@ -209,8 +217,8 @@ diagnostic correlation, and the release process.
 
 ## Review paths
 
-- **2-minute hiring-manager tour:** [overview](#thirty-second-overview) -> [architecture](#architecture) -> [demo](#demo)
-- **10-minute backend review:** [tenant boundary](src/WorkOps.Api/Tenancy/WorkspaceContextMiddleware.cs) -> [work-item service](src/WorkOps.Application/WorkItems/WorkItemService.cs) -> [outbox worker](src/WorkOps.Infrastructure/Messaging/OutboxWorker.cs) -> [golden-flow test](tests/WorkOps.FunctionalTests/TenantIdentityEndpointTests.cs)
+- **2-minute hiring-manager tour:** [reviewer guide](docs/reviewer-guide.md#two-minute-tour)
+- **10-minute backend review:** [reviewer guide](docs/reviewer-guide.md#ten-minute-backend-review) -> [tenant boundary](src/WorkOps.Api/Tenancy/WorkspaceContextMiddleware.cs) -> [work-item service](src/WorkOps.Application/WorkItems/WorkItemService.cs) -> [outbox worker](src/WorkOps.Infrastructure/Messaging/OutboxWorker.cs) -> [golden-flow test](tests/WorkOps.FunctionalTests/TenantIdentityEndpointTests.cs)
 - **Security review:** [threat model](docs/threat-model.md) -> [ASVS map](docs/asvs-map.md) -> [security controls](docs/security.md) -> [CI](.github/workflows/ci.yml)
 - **Delivery review:** [CI](.github/workflows/ci.yml) -> [release workflow](.github/workflows/release.yaml) -> [Dockerfile](Dockerfile) -> [operations](docs/operations.md)
 
@@ -252,5 +260,6 @@ model.
 - [ ] Add artifact signing and provenance attestation when a public release is intentionally made
 
 See [CHANGELOG](CHANGELOG.md), [CONTRIBUTING](CONTRIBUTING.md), [SECURITY](SECURITY.md), and the
-[repository settings checklist](docs/github-settings.md). This project is available under the
+[repository settings checklist](docs/github-settings.md). Portfolio progress is tracked in
+[the public roadmap](docs/portfolio-plan/progress.md). This project is available under the
 [MIT License](LICENSE).
