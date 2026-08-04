@@ -3,10 +3,11 @@
 set -euo pipefail
 
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-api_url=${WORKOPS_API_URL:-http://localhost:8080}
-identity_url=${WORKOPS_IDENTITY_URL:-http://localhost:8081}
+api_url=${WORKOPS_API_URL:-http://localhost:${WORKOPS_HTTP_PORT:-8080}}
+identity_url=${WORKOPS_IDENTITY_URL:-http://localhost:${WORKOPS_IDENTITY_PORT:-8081}}
 demo_password=${WORKOPS_DEMO_PASSWORD:-local-demo-only}
 state_file=${WORKOPS_DEMO_STATE:-$repo_root/.local/demo-state.json}
+evidence_directory=${WORKOPS_DEMO_EVIDENCE_DIR:-.local}
 demo_temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/workops-demo.XXXXXX")
 trap 'rm -rf "$demo_temp_dir"' EXIT
 
@@ -132,8 +133,13 @@ show_summary() {
   printf '  Workspace: %s\n' "$workspace_id"
   printf '  Project:   %s\n' "$project_id"
   printf '  Work item: %s\n' "$work_item_id"
-  printf '  Evidence:  authorization, tenant isolation, concurrency, audit, outbox notification\n'
-  printf '  Tokens:    not intentionally printed or persisted by this script\n'
+  printf '  API URL:          %s\n' "$api_url"
+  printf '  Identity URL:     %s\n' "$identity_url"
+  printf '  Scenario status:  passed\n'
+  printf '  Evidence checks:  authorization, tenant isolation, concurrency, audit, outbox notification\n'
+  printf '  Evidence path:    %s\n' "$evidence_directory"
+  printf '  Cleanup command:  ./scripts/bootstrap.sh --cleanup\n'
+  printf '  Tokens:           not intentionally printed or persisted by this script\n'
 }
 
 require_command curl

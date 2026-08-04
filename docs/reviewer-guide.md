@@ -83,10 +83,18 @@ The repository includes instrumentation and safe local operational paths; it doe
 Prerequisites: Docker Desktop, `curl`, and `jq` on macOS/Linux, or PowerShell 7 on Windows.
 
 ```bash
+./scripts/bootstrap.sh
 ./scripts/demo.sh --start
 ```
 
-The scenario uses synthetic users and checks role denial, idempotent replay, concurrency conflict, non-disclosing cross-workspace access, audit evidence, and outbox notification delivery. Stop the stack with `docker compose down`.
+The scenario uses synthetic users and checks role denial, idempotent replay, concurrency conflict,
+non-disclosing cross-workspace access, audit evidence, and outbox notification delivery.
+
+PowerShell reviewers run `./scripts/bootstrap.ps1` followed by `./scripts/demo.ps1 -Start`. Bootstrap
+only validates prerequisites; it does not install tools or start services. Use
+`./scripts/bootstrap.sh --cleanup` or `./scripts/bootstrap.ps1 -Cleanup` to stop the stack while
+preserving its synthetic database volume. See [demo troubleshooting](operations.md#reviewer-bootstrap-troubleshooting)
+for port, Docker resource, identity startup, and stale-state recovery.
 
 ## Evidence rules
 

@@ -25,14 +25,22 @@ credential-like markers and replaces unsafe output with a blocked notice before 
 macOS/Linux prerequisites: Docker Desktop, `curl`, and `jq`.
 
 ```bash
+./scripts/bootstrap.sh
 ./scripts/demo.sh --start
 ```
 
 PowerShell prerequisite: Docker Desktop and PowerShell 7.
 
 ```powershell
+./scripts/bootstrap.ps1
 ./scripts/demo.ps1 -Start
 ```
+
+The bootstrap scripts validate the repository, Docker client and daemon, Compose, host ports,
+SDK metadata, and platform-specific demo prerequisites. They do not install software, start
+services, change Docker settings, or inspect credentials. A successful validation prints only the
+local API and identity URLs, scenario status, proposed evidence path, and explicit next/cleanup
+commands.
 
 The first Keycloak import can take up to two minutes. The scripts save successful IDs under the
 ignored `.local/` directory. A repeat run reuses those IDs, verifies the current work item, and
@@ -56,8 +64,11 @@ specific API `Host` header is required; normal local runs leave it unset.
 Stop the stack while preserving the PostgreSQL volume:
 
 ```bash
-docker compose down
+./scripts/bootstrap.sh --cleanup
 ```
+
+PowerShell uses `./scripts/bootstrap.ps1 -Cleanup`. These safe cleanup paths preserve named volumes.
+Use `docker compose down --volumes` only when you intentionally want to erase synthetic local state.
 
 ## Manual HTTP collection
 

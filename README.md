@@ -38,6 +38,7 @@ SBOM attestations. There is no hosted application deployment.
 **Run the golden scenario:**
 
 ```bash
+./scripts/bootstrap.sh
 ./scripts/demo.sh --start
 ```
 
@@ -161,18 +162,23 @@ PowerShell 7.
 macOS/Linux:
 
 ```bash
+./scripts/bootstrap.sh
 ./scripts/demo.sh --start
 ```
 
 PowerShell:
 
 ```powershell
+./scripts/bootstrap.ps1
 ./scripts/demo.ps1 -Start
 ```
 
-The first identity-provider import can take up to two minutes. Later runs reuse
-`.local/demo-state.json`, recheck the stale-write and tenant boundaries, and create no duplicate
-demo records. Stop the stack without deleting its database with `docker compose down`.
+The bootstrap validates tools, Docker/Compose, ports, SDK metadata, and repository files without
+installing anything or starting services. The first identity-provider import can take up to two
+minutes. Later runs reuse `.local/demo-state.json`, recheck the stale-write and tenant boundaries,
+and create no duplicate demo records. Stop the stack without deleting its database with
+`./scripts/bootstrap.sh --cleanup` or `./scripts/bootstrap.ps1 -Cleanup`; both preserve named
+volumes.
 
 For a code-only start:
 

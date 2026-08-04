@@ -5,11 +5,14 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $RepoRoot = Split-Path -Parent $PSScriptRoot
-$ApiUrl = if ($env:WORKOPS_API_URL) { $env:WORKOPS_API_URL } else { 'http://localhost:8080' }
-$IdentityUrl = if ($env:WORKOPS_IDENTITY_URL) { $env:WORKOPS_IDENTITY_URL } else { 'http://localhost:8081' }
+$ApiPort = if ($env:WORKOPS_HTTP_PORT) { $env:WORKOPS_HTTP_PORT } else { '8080' }
+$IdentityPort = if ($env:WORKOPS_IDENTITY_PORT) { $env:WORKOPS_IDENTITY_PORT } else { '8081' }
+$ApiUrl = if ($env:WORKOPS_API_URL) { $env:WORKOPS_API_URL } else { "http://localhost:$ApiPort" }
+$IdentityUrl = if ($env:WORKOPS_IDENTITY_URL) { $env:WORKOPS_IDENTITY_URL } else { "http://localhost:$IdentityPort" }
 $ApiHostHeader = if ($env:WORKOPS_API_HOST_HEADER) { $env:WORKOPS_API_HOST_HEADER } else { '' }
 $DemoPassword = if ($env:WORKOPS_DEMO_PASSWORD) { $env:WORKOPS_DEMO_PASSWORD } else { 'local-demo-only' }
 $StateFile = if ($env:WORKOPS_DEMO_STATE) { $env:WORKOPS_DEMO_STATE } else { Join-Path $RepoRoot '.local/demo-state.json' }
+$EvidenceDirectory = if ($env:WORKOPS_DEMO_EVIDENCE_DIR) { $env:WORKOPS_DEMO_EVIDENCE_DIR } else { '.local' }
 
 function Write-Step([string]$Message) {
     Write-Host "`n==> $Message" -ForegroundColor Cyan
@@ -113,8 +116,13 @@ function Show-Summary([string]$WorkspaceId, [string]$ProjectId, [string]$WorkIte
     Write-Host "  Workspace: $WorkspaceId"
     Write-Host "  Project:   $ProjectId"
     Write-Host "  Work item: $WorkItemId"
-    Write-Host '  Evidence:  authorization, tenant isolation, concurrency, audit, outbox notification'
-    Write-Host '  Tokens:    not intentionally printed or persisted by this script'
+    Write-Host "  API URL:          $ApiUrl"
+    Write-Host "  Identity URL:     $IdentityUrl"
+    Write-Host '  Scenario status:  passed'
+    Write-Host '  Evidence checks:  authorization, tenant isolation, concurrency, audit, outbox notification'
+    Write-Host "  Evidence path:    $EvidenceDirectory"
+    Write-Host '  Cleanup command:  ./scripts/bootstrap.ps1 -Cleanup'
+    Write-Host '  Tokens:           not intentionally printed or persisted by this script'
 }
 
 if ($Start) {
