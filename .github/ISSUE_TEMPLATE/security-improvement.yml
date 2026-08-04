@@ -1,0 +1,52 @@
+name: Security improvement
+description: Propose a preventive security, privacy, or tenant-isolation improvement that is not a vulnerability report.
+title: "[Security improvement]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not disclose vulnerabilities, credentials, personal data, or exploitable details here. Follow SECURITY.md and use GitHub's private reporting path for suspected vulnerabilities.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and trust boundary
+      description: Describe the preventive improvement and the affected input, identity, tenant, data, or delivery boundary using safe examples.
+    validations:
+      required: true
+  - type: textarea
+    id: abuse_cases
+    attributes:
+      label: Abuse cases and failure modes
+      description: List the misuse, failure, or privilege-escalation scenarios the change should address without publishing exploit instructions.
+    validations:
+      required: true
+  - type: textarea
+    id: tenant_impact
+    attributes:
+      label: Tenant, authorization, and privacy impact
+      description: Explain workspace isolation, permissions, data exposure, logging, and retention considerations.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed scope and controls
+      description: Describe the smallest safe change, its invariants, and what remains out of scope.
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Required verification
+      description: List negative tests, integration evidence, operational checks, and documentation updates.
+    validations:
+      required: true
+  - type: checkboxes
+    id: disclosure
+    attributes:
+      label: Safe-publication confirmation
+      options:
+        - label: This is a preventive improvement, not a vulnerability report, and contains no credentials, personal data, or private exploit details.
+          required: true
