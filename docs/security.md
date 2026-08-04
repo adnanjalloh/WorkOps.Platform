@@ -19,7 +19,8 @@ certification claim.
 - merged coverage evidence with enforced 70% line and 35% branch regression floors;
 - tag-gated read-only release verification, checksummed candidate handoff to a separate protected
   publication job, version and commit-addressed container tags, SPDX JSON SBOM generation, and
-  digest evidence;
+  digest evidence; the approval-gated publication path reads the digest back from GHCR and creates
+  build-provenance and SPDX SBOM attestations for that exact digest;
 - a synthetic local identity realm whose direct-grant users, audience mapping, and shared
   development password are explicitly excluded from production use;
 - clean dependency boundaries checked by tests;
@@ -89,6 +90,10 @@ navigation aid, not a certification or a claim that every requirement in a refer
 The demo scripts write only synthetic IDs and opaque versions to the ignored `.local/` directory;
 tokens are not intentionally printed or persisted. The `.http` collection contains only the
 declared local-only password.
+
+The attestation workflow is configured but has not produced public evidence while no release image
+exists. GitHub artifact attestations establish provenance and integrity for the published digest;
+they do not establish a separate traditional code-signing mechanism.
 
 ## Required before the first release
 

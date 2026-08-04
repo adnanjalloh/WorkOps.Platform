@@ -21,6 +21,20 @@ The 2026-08-04 local verification for commit `7e15cf45eaa6c3b23ffafec078cf53f8b1
 
 Test distribution: 53 unit, 24 integration, 21 functional, and 8 architecture tests.
 
+## Repository settings verification
+
+On 2026-08-04, private vulnerability reporting returned `enabled: true` through the GitHub
+repository API after enablement. The configured social preview was visually verified in repository
+settings against `docs/assets/workops-social-preview.png`. These observations cover only those two
+settings and do not imply that every item in the repository-settings checklist is complete.
+
+## Release readiness boundary
+
+[Issue #7](https://github.com/adnanjalloh/WorkOps.Platform/issues/7) scopes preparation of the
+`v0.1.0` provenance and SBOM path. Workflow configuration is not release evidence: no tag, GitHub
+Release, GHCR package, registry digest, or attestation is claimed until the protected workflow runs
+after separate approval and its outputs are independently verified.
+
 ## Public hosted evidence
 
 The reviewed default-branch commit has public workflow results for:

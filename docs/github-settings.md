@@ -6,13 +6,15 @@ before making the repository public or creating the first release.
 ## Repository
 
 - [ ] Set `master` as the default branch.
-- [ ] Enable private vulnerability reporting, the security policy, Dependabot alerts and updates,
-  secret scanning, and push protection.
+- [x] Enable private vulnerability reporting. Verified through the repository API on 2026-08-04.
+- [ ] Verify the security policy, Dependabot alerts and updates, secret scanning, and push
+  protection where the account plan exposes them.
 - [ ] Restrict workflow actions to required publishers and require full commit-SHA pins where the
   organization policy supports it.
 - [ ] Disable unused merge methods and automatically delete merged branches.
 - [ ] Apply the exact description and topics from [repository metadata](repository-metadata.md).
-- [ ] Upload `docs/assets/workops-social-preview.png` as the social preview.
+- [x] Upload `docs/assets/workops-social-preview.png` as the social preview. Visually verified in
+  repository settings on 2026-08-04.
 
 ## `master` ruleset
 
@@ -34,11 +36,13 @@ before making the repository public or creating the first release.
   accurately.
 - [ ] Add a `v*` tag ruleset that blocks updates and deletion and limits tag creation to maintainers.
 - [ ] Confirm the workflow token may write repository contents and packages only for the `publish`
-  job; the `verify` job must remain read-only and outside the protected environment.
+  job; provenance permissions must also remain limited to that job, while the `verify` job stays
+  read-only and outside the protected environment.
 - [ ] Verify the GHCR package is linked to this repository and set its intended visibility.
 - [ ] After each release, compare the attached digest with the GHCR image and retain the SPDX SBOM.
 
 The workflow deliberately publishes only on a semantic version tag at the current `master` head.
 Its read-only verification job scans and packages the exact candidate before the protected publish
-job receives registry permissions. Signing and provenance attestation remain future hardening work
-and must not be claimed until implemented.
+job receives registry and attestation permissions. The configured provenance and SPDX SBOM
+attestations must not be claimed as generated evidence until an approved release completes and the
+documented verification commands pass.
