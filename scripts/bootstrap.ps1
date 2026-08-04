@@ -9,15 +9,16 @@ $ApiPort = if ($env:WORKOPS_HTTP_PORT) { [int]$env:WORKOPS_HTTP_PORT } else { 80
 $IdentityPort = if ($env:WORKOPS_IDENTITY_PORT) { [int]$env:WORKOPS_IDENTITY_PORT } else { 8081 }
 $ApiUrl = if ($env:WORKOPS_API_URL) { $env:WORKOPS_API_URL } else { "http://localhost:$ApiPort" }
 $IdentityUrl = if ($env:WORKOPS_IDENTITY_URL) { $env:WORKOPS_IDENTITY_URL } else { "http://localhost:$IdentityPort" }
-$EvidenceDirectory = if ($env:WORKOPS_DEMO_EVIDENCE_DIR) {
-    $env:WORKOPS_DEMO_EVIDENCE_DIR
+$EvidenceDirectory = ''
+if ($env:WORKOPS_DEMO_EVIDENCE_DIR) {
+    $EvidenceDirectory = $env:WORKOPS_DEMO_EVIDENCE_DIR
+}
+else {
+    $EvidenceDirectory = Join-Path $RepoRoot 'artifacts/reviewer-demo'
 }
 
 if ($ApiPort -lt 1 -or $ApiPort -gt 65535) { throw 'API port must be an integer from 1 to 65535.' }
 if ($IdentityPort -lt 1 -or $IdentityPort -gt 65535) { throw 'Identity port must be an integer from 1 to 65535.' }
-else {
-    Join-Path $RepoRoot 'artifacts/reviewer-demo'
-}
 
 function Write-Pass([string]$Message) {
     Write-Host "  [ok] $Message" -ForegroundColor Green
