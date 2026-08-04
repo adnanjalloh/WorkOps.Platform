@@ -38,8 +38,10 @@ specific collector backend, reverse-proxy configuration, or production capacity.
 Local Bash and PowerShell demo runs reported the idempotent project replay, viewer `403`, stale
 `409`, outsider `404`, asynchronous audit/notification evidence, and a non-duplicating repeat path.
 The scheduled/manual `Full stack demo` workflow is configured to run the Bash scenario from a clean
-host, screen its log for bearer/JWT/credential markers before displaying or uploading it, and retain
-synthetic log/JSON evidence only when that fail-closed gate passes. The [public full-stack run] passed
+host after non-installing bootstrap validation, screen its logs for bearer/JWT/credential markers
+before displaying or uploading them, and retain synthetic log/JSON evidence only when that
+fail-closed gate passes. Its UTC timestamps and elapsed seconds are dated observations, not an SLA.
+The [public full-stack run] passed
 at the reviewed commit. These scripts are reviewer tools, not substitutes for the automated suites.
 
 Local verification on 2026-08-02 reported 90.3% line coverage and 48.9% branch coverage, with all 106
@@ -62,6 +64,16 @@ Container-backed suites use supported providers rather than mocked database beha
 tests use `TimeProvider`; tests do not depend on sleeps or local time.
 
 ## Commands
+
+Validate the containerized reviewer path without installing tools or starting services:
+
+```bash
+./scripts/bootstrap.sh
+```
+
+CI runs the Bash and PowerShell bootstrap validators before building the container. The manual and
+scheduled full-stack workflow then exercises the Bash path and complete synthetic scenario from a
+clean hosted runner.
 
 ```bash
 dotnet restore --locked-mode

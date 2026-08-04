@@ -109,6 +109,33 @@ Run the complete local backend scenario with `./scripts/demo.sh --start` or
 `./scripts/demo.ps1 -Start`. Successful resource IDs and opaque versions are stored under the
 ignored `.local/` directory; access tokens are not intentionally printed or persisted by the scripts.
 
+Validate the reviewer environment first with `./scripts/bootstrap.sh` or
+`./scripts/bootstrap.ps1`. Validation does not install tools or start services. Stop the stack with
+`./scripts/bootstrap.sh --cleanup` or `./scripts/bootstrap.ps1 -Cleanup`; named volumes are
+preserved by default.
+
+### Reviewer bootstrap troubleshooting
+
+- **Port 8080 or 8081 is occupied:** stop the conflicting process, or set distinct
+  `WORKOPS_HTTP_PORT` and `WORKOPS_IDENTITY_PORT` values before running both bootstrap and demo.
+  The Compose bindings remain loopback-only.
+- **Docker is unavailable:** start Docker Desktop or the Docker daemon, wait for `docker info` to
+  succeed, then rerun bootstrap. The scripts do not start or reconfigure Docker.
+- **The stack is slow or exits under load:** allocate at least 4 GiB to Docker for this five-service
+  local scenario, inspect `docker compose ps` and sanitized service logs, then retry. This is local
+  reviewer guidance, not a capacity claim.
+- **Keycloak is still starting:** allow the bounded two-minute readiness wait. If it expires, inspect
+  `docker compose logs identity` without copying credentials into tickets or public logs.
+- **Synthetic state is stale:** first run the safe cleanup and restart. If schema or realm changes
+  require a clean database, explicitly run `docker compose down --volumes`, understanding that it
+  deletes only this Compose project's synthetic named volume, then remove the ignored
+  `.local/demo-state.json` file and rerun. Volume deletion is never part of bootstrap defaults.
+
+The scheduled/manual full-stack workflow runs bootstrap on a clean hosted runner before the golden
+scenario. Its artifact records UTC start/completion times and elapsed seconds as a dated observation,
+not an SLA. A dev container is deliberately not advertised: the complete nested Compose scenario
+has not been proven in Codespaces.
+
 ### Attachment reconciliation
 
 The metadata transaction removes a newly stored object when its database commit fails. If that

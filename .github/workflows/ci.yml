@@ -71,6 +71,13 @@ jobs:
       - name: Validate local Compose boundary
         run: scripts/check-compose-security.sh
 
+      - name: Validate Bash reviewer bootstrap
+        run: ./scripts/bootstrap.sh
+
+      - name: Validate PowerShell reviewer bootstrap
+        shell: pwsh
+        run: ./scripts/bootstrap.ps1
+
       - name: Scan Git history for secrets
         uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
