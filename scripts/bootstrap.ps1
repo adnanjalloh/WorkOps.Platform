@@ -67,6 +67,20 @@ function Test-ReviewerPort(
     throw "$Label port $Port is already in use. Set the matching WORKOPS_*_PORT override or stop the conflicting process."
 }
 
+function Get-PublishedPorts($ComposeConfig, [string]$Service) {
+    $serviceProperty = $ComposeConfig.services.PSObject.Properties[$Service]
+    if ($null -eq $serviceProperty) {
+        throw "Compose service is missing: $Service"
+    }
+
+    $portsProperty = $serviceProperty.Value.PSObject.Properties['ports']
+    if ($null -eq $portsProperty -or $null -eq $portsProperty.Value) {
+        return @()
+    }
+
+    @($portsProperty.Value | Where-Object { $null -ne $_ })
+}
+
 Assert-Command docker 'Docker is required. Install and start Docker Desktop or a compatible Docker Engine.'
 
 if ($Cleanup) {
@@ -116,15 +130,15 @@ $composeJson = (& docker compose --project-directory $RepoRoot config --format j
 if ($LASTEXITCODE -ne 0) { throw 'docker-compose.yml did not validate.' }
 $composeConfig = $composeJson | ConvertFrom-Json
 foreach ($privateService in @('postgres', 'rabbitmq', 'redis')) {
-    $serviceConfig = $composeConfig.services.PSObject.Properties[$privateService].Value
-    if (@($serviceConfig.ports).Count -gt 0) {
+    $publishedPorts = @(Get-PublishedPorts $composeConfig $privateService)
+    if ($publishedPorts.Count -gt 0) {
         throw "$privateService must not publish a host port."
     }
 }
 foreach ($loopbackService in @('api', 'identity')) {
-    $serviceConfig = $composeConfig.services.PSObject.Properties[$loopbackService].Value
-    $publishedPorts = @($serviceConfig.ports)
-    if ($publishedPorts.Count -eq 0 -or @($publishedPorts | Where-Object host_ip -ne '127.0.0.1').Count -gt 0) {
+    $publishedPorts = @(Get-PublishedPorts $composeConfig $loopbackService)
+    $nonLoopbackPorts = @($publishedPorts | Where-Object { $_.host_ip -ne '127.0.0.1' })
+    if ($publishedPorts.Count -eq 0 -or $nonLoopbackPorts.Count -gt 0) {
         throw "$loopbackService must publish only loopback host ports."
     }
 }
