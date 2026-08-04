@@ -1,11 +1,11 @@
 # GitHub repository settings
 
-These controls live in GitHub and cannot be enforced by committed source alone. Apply this checklist
-before making the repository public or creating the first release.
+These controls live in GitHub and cannot be enforced by committed source alone. Verify this
+checklist before each release and after material repository-settings changes.
 
 ## Repository
 
-- [ ] Set `master` as the default branch.
+- [x] Set `master` as the default branch. Verified through the repository API on 2026-08-04.
 - [x] Enable private vulnerability reporting. Verified through the repository API on 2026-08-04.
 - [ ] Verify the security policy, Dependabot alerts and updates, secret scanning, and push
   protection where the account plan exposes them.
@@ -31,18 +31,20 @@ before making the repository public or creating the first release.
 
 ## Releases
 
-- [ ] Create a `release` environment with no untrusted deployment branches. Add a required reviewer
-  only when a genuinely independent reviewer is available; otherwise describe the maintainer gate
-  accurately.
-- [ ] Add a `v*` tag ruleset that blocks updates and deletion and limits tag creation to maintainers.
-- [ ] Confirm the workflow token may write repository contents and packages only for the `publish`
-  job; provenance permissions must also remain limited to that job, while the `verify` job stays
-  read-only and outside the protected environment.
-- [ ] Verify the GHCR package is linked to this repository and set its intended visibility.
-- [ ] After each release, compare the attached digest with the GHCR image and retain the SPDX SBOM.
+- [x] Create a `release` environment restricted to `v*` tags. Verified on 2026-08-04. No required
+  reviewer is configured because no genuinely independent reviewer is currently available.
+- [x] Add an active `v*` tag ruleset that restricts creation to repository administrators and blocks
+  updates, deletion, and non-fast-forward changes. Verified on 2026-08-04.
+- [x] Confirm the workflow token receives contents, packages, OIDC, and attestation write permissions
+  only in the protected `publish` job; the `verify` job remains read-only and outside the protected
+  environment. Verified in release run `30901202020`.
+- [x] Verify the GHCR package is public, linked to this repository, and grants this repository Actions
+  access. Verified on 2026-08-04.
+- [x] Compare the attached `v0.1.0` digest with both public GHCR tags, retain the SPDX SBOM, and verify
+  both attestations. Completed on 2026-08-04.
 
 The workflow deliberately publishes only on a semantic version tag at the current `master` head.
 Its read-only verification job scans and packages the exact candidate before the protected publish
 job receives registry and attestation permissions. The configured provenance and SPDX SBOM
-attestations must not be claimed as generated evidence until an approved release completes and the
-documented verification commands pass.
+attestations were generated for `v0.1.0` and independently verified against the public registry
+digest. Each later release requires its own generated and verified evidence.

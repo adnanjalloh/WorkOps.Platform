@@ -2,9 +2,9 @@
 
 ## Honest status
 
-This is the security baseline for a pre-release portfolio project. Only controls identified as
+This is the security baseline for the `v0.1.0` portfolio release. Only controls identified as
 implemented below exist in code today. The document is informed by OWASP guidance but makes no
-certification claim.
+certification claim or production-suitability claim.
 
 ## Implemented
 
@@ -91,11 +91,12 @@ The demo scripts write only synthetic IDs and opaque versions to the ignored `.l
 tokens are not intentionally printed or persisted. The `.http` collection contains only the
 declared local-only password.
 
-The attestation workflow is configured but has not produced public evidence while no release image
-exists. GitHub artifact attestations establish provenance and integrity for the published digest;
-they do not establish a separate traditional code-signing mechanism.
+The public `v0.1.0` image has independently verified build-provenance and SPDX SBOM attestations for
+digest `sha256:0297c341cf86d056163e167a71ea4789d316bbb0ecaaf2950ce69f3e20debd5a`.
+GitHub artifact attestations establish provenance and integrity for that digest; they do not
+establish a separate traditional code-signing mechanism.
 
-## Required before the first release
+## Required before production deployment
 
 - replace the development file scanner with a monitored antivirus service and replace ephemeral
   local storage with durable private object storage before production use;

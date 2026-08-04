@@ -4,9 +4,9 @@ This page tracks public portfolio work at an epic level. An item is complete onl
 
 | Epic | Status | Current boundary / next proof |
 | --- | --- | --- |
-| WO-00 Baseline truth boundary | Draft PR | [Issue #3](https://github.com/adnanjalloh/WorkOps.Platform/issues/3) and [draft PR #5](https://github.com/adnanjalloh/WorkOps.Platform/pull/5) record the 2026-08-04 baseline. Merge requires approval. |
-| WO-01 Governance and reviewer experience | In progress | [Issue #4](https://github.com/adnanjalloh/WorkOps.Platform/issues/4) scopes reviewer paths, case study, evidence index, progress tracking, and a security-improvement template. |
-| WO-02 Release provenance | In preparation, gated | [Issue #7](https://github.com/adnanjalloh/WorkOps.Platform/issues/7) scopes registry-digest provenance, SPDX SBOM attestation, prepared notes, and verification. Public tag, release, package, and attestations require separate approval and generated evidence. |
+| WO-00 Baseline truth boundary | Complete | [Issue #3](https://github.com/adnanjalloh/WorkOps.Platform/issues/3) and [merged PR #5](https://github.com/adnanjalloh/WorkOps.Platform/pull/5) record the 2026-08-04 baseline. |
+| WO-01 Governance and reviewer experience | Merged foundation | [Issue #4](https://github.com/adnanjalloh/WorkOps.Platform/issues/4) and [merged PR #6](https://github.com/adnanjalloh/WorkOps.Platform/pull/6) provide reviewer paths, case study, evidence index, progress tracking, and a security-improvement template. Remaining repository checklist items stay explicit. |
+| WO-02 Release provenance | Verified release | [v0.1.0](https://github.com/adnanjalloh/WorkOps.Platform/releases/tag/v0.1.0) publishes a public GHCR image, SPDX SBOM, immutable digest evidence, and verified build-provenance plus SBOM attestations. [Evidence](../evidence.md#verified-v010-release-evidence) remains digest- and run-specific. |
 | WO-03 Reviewer bootstrap | Partial | Bash and PowerShell golden scenarios exist. A tested dedicated bootstrap/dev-container path remains future work. |
 | WO-04 Local observability stack | Not started | Instrumentation exists; a collector, storage backends, dashboards, and smoke evidence do not. |
 | WO-05 Durable object storage | Not started | Tenant-separated local storage exists; a durable provider adapter and recovery evidence do not. |

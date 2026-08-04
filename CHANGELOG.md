@@ -6,6 +6,8 @@ first release.
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-08-04
+
 ### Added
 
 - Approval-gated release provenance and SPDX SBOM attestations bound to the immutable GHCR digest,

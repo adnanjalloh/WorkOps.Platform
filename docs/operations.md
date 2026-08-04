@@ -145,7 +145,7 @@ disabled because this repository is owned by a personal account.
 The attestations are provenance and integrity evidence generated with a short-lived workflow
 identity. They are not a claim that a separate traditional code-signing mechanism exists.
 
-After an approved `v0.1.0` publication, authenticate to GHCR and verify the build provenance:
+With GitHub CLI authentication, verify the public `v0.1.0` image's build provenance:
 
 ```bash
 gh attestation verify \
@@ -162,9 +162,10 @@ gh attestation verify \
   --predicate-type https://spdx.dev/Document/v2.3
 ```
 
-These commands cannot succeed before the image and attestations are intentionally published. The
-image name and casing must be confirmed against the resulting GHCR package before recording final
-release evidence.
+Both commands passed on 2026-08-04 for digest
+`sha256:0297c341cf86d056163e167a71ea4789d316bbb0ecaaf2950ce69f3e20debd5a`. The
+version and commit-addressed tags resolved anonymously to that same registry digest. Repeat all
+checks and record new evidence for every later release.
 
 Configure the `release` environment before publishing and add a required reviewer only when that
 reviewer is genuinely independent. Treat tags as immutable and protect `v*` tags from update or
