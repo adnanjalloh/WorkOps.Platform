@@ -35,6 +35,12 @@ SBOM attestations. There is no hosted application deployment.
 **Review:** [2-minute guide](docs/reviewer-guide.md) · [case study](docs/portfolio-case-study.md) ·
 [evidence](docs/evidence.md) · [architecture](docs/architecture.md) · [security](docs/security.md)
 
+### Two-minute engineering tour
+
+[![Watch the silent WorkOps.Platform two-minute engineering tour](docs/assets/workops-video-thumbnail.png)](https://github.com/adnanjalloh/WorkOps.Platform/releases/download/v0.1.0/WorkOps.Platform-2-Minute-Engineering-Tour.mp4)
+
+[Watch or download the silent MP4](https://github.com/adnanjalloh/WorkOps.Platform/releases/download/v0.1.0/WorkOps.Platform-2-Minute-Engineering-Tour.mp4) · [Open the verified v0.1.0 release](https://github.com/adnanjalloh/WorkOps.Platform/releases/tag/v0.1.0)
+
 **Run the golden scenario:**
 
 ```bash
