@@ -7,27 +7,32 @@ checklist before each release and after material repository-settings changes.
 
 - [x] Set `master` as the default branch. Verified through the repository API on 2026-08-04.
 - [x] Enable private vulnerability reporting. Verified through the repository API on 2026-08-04.
-- [ ] Verify the security policy, Dependabot alerts and updates, secret scanning, and push
-  protection where the account plan exposes them.
-- [ ] Restrict workflow actions to required publishers and require full commit-SHA pins where the
-  organization policy supports it.
-- [ ] Disable unused merge methods and automatically delete merged branches.
-- [ ] Apply the exact description and topics from [repository metadata](repository-metadata.md).
+- [x] Keep the security policy, Dependabot alerts and security updates, secret scanning, and push
+  protection enabled. Verified from the committed policy and repository API on 2026-08-04.
+- [x] Restrict workflow actions to the selected allowlist and require full commit-SHA pins. Verified
+  through the repository Actions-permissions API on 2026-08-04.
+- [x] Allow squash merging only and automatically delete merged branches. Verified through the
+  repository API on 2026-08-04.
+- [x] Apply the exact description and topics from [repository metadata](repository-metadata.md).
+  Verified through the repository API on 2026-08-04.
 - [x] Upload `docs/assets/workops-social-preview.png` as the social preview. Visually verified in
   repository settings on 2026-08-04.
 
-## `master` ruleset
+## `master` branch protection
 
-- [ ] Require a pull request with **zero required approvals** while this is a solo-maintainer
-  repository; document self-review in the pull-request description and never manufacture approval.
+- [x] Require a pull request with **zero required approvals** while this is a solo-maintainer
+  repository. Verified through the branch-protection API on 2026-08-04; self-review remains part of
+  the pull-request description and no approval is manufactured.
 - [ ] Increase required approvals and enable stale/latest-push approval rules only after a genuine
   trusted reviewer is consistently available.
-- [ ] Require conversation resolution and block force pushes and branch deletion.
-- [ ] Require linear history and prevent bypass except for a documented emergency maintainer path.
-- [ ] After the first hosted branch and validation-PR runs, select the actual displayed CI, CodeQL,
-  and dependency-review check names in the ruleset; do not guess or hard-code unseen contexts. Keep
-  the scheduled/manual full-stack demo outside the pull-request gate unless its runtime is acceptable.
-- [ ] Require the branch to be current before merge.
+- [x] Require conversation resolution and block force pushes and branch deletion. Verified through
+  the branch-protection API on 2026-08-04.
+- [x] Require linear history and enforce protection for administrators. Verified through the
+  branch-protection API on 2026-08-04; no emergency bypass is configured.
+- [x] Require the hosted `verify`, `Analyze C#`, and `review` checks. Verified with validation pull
+  requests on 2026-08-04. The scheduled/manual full-stack demo remains outside the pull-request gate.
+- [x] Require the branch to be current before merge. Strict status checks were verified through the
+  branch-protection API on 2026-08-04.
 
 ## Releases
 
