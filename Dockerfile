@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM mcr.microsoft.com/dotnet/sdk:10.0.302-noble AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0.400-noble AS build
 ARG VCS_REF=local
 ARG VERSION=0.1.0-local
 WORKDIR /src
