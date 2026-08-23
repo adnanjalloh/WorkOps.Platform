@@ -1,6 +1,6 @@
 # Portfolio roadmap progress
 
-This page tracks public portfolio work at an epic level. An item is complete only when its acceptance criteria and evidence are available; repository configuration alone is not sufficient.
+This page records the portfolio scope delivered through v0.1.0 and the ideas deliberately deferred when that scope was closed. Deferred items are not implementation claims.
 
 | Epic | Status | Current boundary / next proof |
 | --- | --- | --- |
@@ -8,16 +8,16 @@ This page tracks public portfolio work at an epic level. An item is complete onl
 | WO-01 Governance and reviewer experience | Verified foundation | [Issue #4](https://github.com/adnanjalloh/WorkOps.Platform/issues/4) and [merged PR #6](https://github.com/adnanjalloh/WorkOps.Platform/pull/6) provide reviewer paths, case study, evidence tracking, and templates. [Issue #11](https://github.com/adnanjalloh/WorkOps.Platform/issues/11) synchronizes the settings checklist with verified live controls. |
 | WO-02 Release provenance | Verified release | [v0.1.0](https://github.com/adnanjalloh/WorkOps.Platform/releases/tag/v0.1.0) publishes a public GHCR image, SPDX SBOM, immutable digest evidence, and verified build-provenance plus SBOM attestations. [Evidence](../evidence.md#verified-v010-release-evidence) remains digest- and run-specific. |
 | WO-03 Reviewer bootstrap | Verified reviewer path | [Issue #12](https://github.com/adnanjalloh/WorkOps.Platform/issues/12) and [PR #24](https://github.com/adnanjalloh/WorkOps.Platform/pull/24) add non-installing Bash/PowerShell validation, safe cleanup, troubleshooting, and screened clean-host evidence. A dev-container path is not advertised because the complete nested Compose scenario has not been proven there. |
-| WO-04 Local observability stack | Not started | [Issue #13](https://github.com/adnanjalloh/WorkOps.Platform/issues/13) tracks the collector, storage backends, dashboards, and smoke evidence. |
-| WO-05 Durable object storage | Not started | [Issue #14](https://github.com/adnanjalloh/WorkOps.Platform/issues/14) tracks a provider adapter, emulator-backed tests, cleanup, and recovery evidence. |
-| WO-06 Malware scanner adapter | Not started | [Issue #15](https://github.com/adnanjalloh/WorkOps.Platform/issues/15) tracks a monitored scanner integration and fail-closed failure-path tests. |
-| WO-07 Member lifecycle | Not started | [Issue #16](https://github.com/adnanjalloh/WorkOps.Platform/issues/16) tracks role changes, deactivation/reactivation, concurrency, and final-owner protection. |
-| WO-08 Work-item list and search | Not started | [Issue #17](https://github.com/adnanjalloh/WorkOps.Platform/issues/17) tracks tenant-safe listing, filters, pagination, indexes, and query evidence. |
-| WO-09 Recovery and chaos evidence | Partial foundation | [Issue #18](https://github.com/adnanjalloh/WorkOps.Platform/issues/18) tracks real-container broker, lease, duplicate, DLQ, replay, and dependency-recovery scenarios. |
-| WO-10 Local performance evidence | Partial foundation | [Issue #19](https://github.com/adnanjalloh/WorkOps.Platform/issues/19) tracks reproducible data, percentiles, environment capture, and measured local evidence. |
-| WO-11 OpenAPI and contract gate | Partial foundation | [Issue #20](https://github.com/adnanjalloh/WorkOps.Platform/issues/20) tracks a deterministic artifact, error catalog, version policy, and compatibility gate. |
-| WO-12 Optional cloud reference | Gated | [Issue #21](https://github.com/adnanjalloh/WorkOps.Platform/issues/21) records the provider, budget, monitoring, expiry, and teardown decision gate; no deployment is approved. |
-| WO-13 Case-study site and tour | Partial assets | [Issue #22](https://github.com/adnanjalloh/WorkOps.Platform/issues/22) tracks the static site, genuine captioned tour, privacy-safe CV link, and profile synchronization. |
+| WO-04 Local observability stack | Deferred | OpenTelemetry remains opt-in; no local dashboard stack or production-monitoring claim is included. |
+| WO-05 Durable object storage | Deferred | The tenant-separated local storage adapter remains an explicit durability boundary. |
+| WO-06 Malware scanner adapter | Deferred | The development scanner remains a stub, while non-development configuration continues to fail closed. |
+| WO-07 Member lifecycle | Deferred | Invitation and membership listing remain the supported scope; lifecycle administration is not claimed. |
+| WO-08 Work-item list and search | Deferred | Command and single-item behavior remain the supported scope; list and search are not claimed. |
+| WO-09 Recovery and chaos evidence | Deferred | Recovery foundations remain documented, without claiming a completed chaos test suite. |
+| WO-10 Local performance evidence | Deferred | The bounded smoke script remains available, without production-scale or benchmark claims. |
+| WO-11 OpenAPI and contract gate | Deferred | Development OpenAPI remains available; no deterministic compatibility gate is claimed. |
+| WO-12 Optional cloud reference | Closed as reference-only | No cloud deployment, budget, monitoring ownership, or hosted-service claim is approved. |
+| WO-13 Case-study site and tour | Closed at repository scope | The case study, reviewer guide, release evidence, and two-minute tour are hosted in this repository; a separate site, public CV, and profile automation are not claimed. |
 
 ## Approval gates
 
