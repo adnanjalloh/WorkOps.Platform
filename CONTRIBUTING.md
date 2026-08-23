@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- .NET SDK `10.0.302` or a compatible allowed patch
+- .NET SDK `10.0.400` or a compatible allowed patch
 - Git
 - Docker Desktop for container and later integration-test workflows
 
