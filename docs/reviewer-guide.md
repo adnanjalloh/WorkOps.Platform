@@ -6,13 +6,16 @@ Choose the path that matches the time and question you have.
 
 ## Two-minute tour
 
-1. Read the [README status and proof summary](../README.md#portfolio-release-candidate).
+1. Read the [README workflow and practical examples](../README.md).
 2. Scan the [runtime architecture](../README.md#architecture) and the [golden scenario](../README.md#golden-scenario).
 3. Open the [tenant context middleware](../src/WorkOps.Api/Tenancy/WorkspaceContextMiddleware.cs) to see how authenticated membership becomes workspace context.
 4. Open the [golden-flow functional test](../tests/WorkOps.FunctionalTests/TenantIdentityEndpointTests.cs) for executable authorization, concurrency, audit, and messaging evidence.
 5. Check the [evidence index](evidence.md) for dated claims and limitations.
 
 Expected proof point: the repository makes tenant isolation, stale-write rejection, idempotent commands, and outbox-backed notification delivery directly traceable from public claims to code and tests.
+
+For a live explanation, the [interview walkthrough](interview-walkthrough.md) pairs the existing
+demo output with a two-minute speaking outline and follow-up questions.
 
 ## Ten-minute backend review
 
