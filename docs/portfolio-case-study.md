@@ -2,9 +2,13 @@
 
 ## Problem
 
-Backend portfolio projects often demonstrate endpoint construction while leaving authorization, tenant isolation, failure handling, delivery guarantees, and operational evidence implicit. WorkOps.Platform was built to make those harder concerns reviewable in one coherent workflow system.
+The scenario is a team managing projects and work items in its own workspace. Owners invite
+members, contributors change work, and viewers read it. A useful backend must also handle retries,
+simultaneous edits, notifications, and attempts to access another team's data.
 
-The goal is not to imitate a large production estate. The goal is to show how a senior backend engineer can turn ambiguous platform requirements into explicit boundaries, executable invariants, and repeatable delivery evidence.
+WorkOps.Platform implements that scenario as a portfolio API. Its design and tests make permissions,
+tenant isolation, concurrency, and message delivery visible to a reviewer. All users and data are
+synthetic; the project does not represent a deployed customer system.
 
 ## Constraints
 
