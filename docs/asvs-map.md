@@ -20,7 +20,7 @@ baseline exists while deployment or broader product concerns remain.
 | V12 Secure Communication | Partial | Production HTTPS redirect/HSTS, HTTPS-only CORS origins, secure metadata requirement | TLS termination, broker TLS, database TLS, and trusted proxy configuration are deployment work |
 | V13 Configuration | Implemented application baseline | Safe committed defaults, ignored secret formats, production validation, locked dependencies, non-root read-only container | Managed secrets and scoped workload identity are deployment work |
 | V14 Data Protection | Partial | Tenant isolation, minimal audit/message content, private file paths, safe errors and diagnostics | Data classification, retention, backup, deletion, and regional rules require product decisions |
-| V15 Secure Coding and Architecture | Implemented baseline | Modular-monolith dependency tests, warnings as errors, locked restore, CodeQL, dependency review, NuGet audit, image scan | Formal independent review and provenance attestation remain |
+| V15 Secure Coding and Architecture | Implemented baseline | Modular-monolith dependency tests, warnings as errors, locked restore, CodeQL, dependency review, NuGet audit, image scan; verified build-provenance and SBOM attestations for `v0.1.0` | Formal independent review remains; generate and verify attestations for each later release |
 | V16 Security Logging and Error Handling | Implemented baseline | Structured JSON logs, generated correlation/trace IDs, safe Problem Details, low-cardinality metrics, tested submitted-value absence | Central retention, alerting, access control, and incident exercises are deployment work |
 
 The detailed control inventory is in [security](security.md), abuse cases are in the

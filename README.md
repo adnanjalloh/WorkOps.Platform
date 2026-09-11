@@ -179,7 +179,9 @@ and create no duplicate demo records. Stop the stack without deleting its databa
 `./scripts/bootstrap.sh --cleanup` or `./scripts/bootstrap.ps1 -Cleanup`; both preserve named
 volumes.
 
-For a code-only start:
+For a code-only start, install the .NET SDK specified in `global.json` (currently `10.0.400`)
+and configure the API's database and identity dependencies as described in
+[operations](docs/operations.md):
 
 ```bash
 dotnet restore --locked-mode
@@ -245,6 +247,14 @@ OTLP export is disabled until an endpoint is explicitly configured.
 
 Read [operations](docs/operations.md) for health, message recovery, rate limits, cache/file settings,
 diagnostic correlation, and the release process.
+
+## Dependency maintenance
+
+Package versions live in `Directory.Packages.props`; all affected `packages.lock.json` files must
+be refreshed across the solution in the same change. Dependabot groups OpenTelemetry, MSTest, and
+the CodeQL action steps that need coordinated updates. Grouping does not guarantee complete
+transitive lockfiles: follow the [dependency-update procedure](docs/testing.md#dependency-updates)
+and require a passing locked restore, build, tests, and GitHub checks before merging.
 
 ## Review paths
 
