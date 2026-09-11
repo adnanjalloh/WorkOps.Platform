@@ -43,6 +43,19 @@ internal sealed class WorkItemConfiguration : IEntityTypeConfiguration<WorkItem>
         builder.HasIndex(workItem => new
         {
             workItem.WorkspaceId,
+            workItem.CreatedAt,
+            workItem.Id,
+        }).IsDescending(false, true, true);
+        builder.HasIndex(workItem => new
+        {
+            workItem.WorkspaceId,
+            workItem.ProjectId,
+            workItem.CreatedAt,
+            workItem.Id,
+        }).IsDescending(false, false, true, true);
+        builder.HasIndex(workItem => new
+        {
+            workItem.WorkspaceId,
             workItem.ProjectId,
             workItem.Status,
         });

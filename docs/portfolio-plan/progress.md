@@ -1,6 +1,7 @@
 # Portfolio roadmap progress
 
-This page records the portfolio scope delivered through v0.1.0 and the ideas deliberately deferred when that scope was closed. Deferred items are not implementation claims.
+This page records the portfolio scope delivered through v0.1.0 and subsequent focused improvements.
+Deferred items are not implementation claims; later work is linked to its own issue and tests.
 
 | Epic | Status | Current boundary / next proof |
 | --- | --- | --- |
@@ -12,8 +13,8 @@ This page records the portfolio scope delivered through v0.1.0 and the ideas del
 | WO-05 Durable object storage | Deferred | The tenant-separated local storage adapter remains an explicit durability boundary. |
 | WO-06 Malware scanner adapter | Deferred | The development scanner remains a stub, while non-development configuration continues to fail closed. |
 | WO-07 Member lifecycle | Deferred | Invitation and membership listing remain the supported scope; lifecycle administration is not claimed. |
-| WO-08 Work-item list and search | Deferred | Command and single-item behavior remain the supported scope; list and search are not claimed. |
-| WO-09 Recovery and chaos evidence | Deferred | Recovery foundations remain documented, without claiming a completed chaos test suite. |
+| WO-08 Work-item list and search | Implemented | [Issue #64](https://github.com/adnanjalloh/WorkOps.Platform/issues/64): bounded, tenant-scoped listing and composable filters; [query contract and tests](../work-item-queries.md). |
+| WO-09 Recovery and chaos evidence | Targeted regression coverage | Cancellation, retry exhaustion, expired-lease recovery, and completion-write failure/deduplication tests; no claim of a complete chaos or broker-outage suite. |
 | WO-10 Local performance evidence | Deferred | The bounded smoke script remains available, without production-scale or benchmark claims. |
 | WO-11 OpenAPI and contract gate | Deferred | Development OpenAPI remains available; no deterministic compatibility gate is claimed. |
 | WO-12 Optional cloud reference | Closed as reference-only | No cloud deployment, budget, monitoring ownership, or hosted-service claim is approved. |

@@ -31,7 +31,7 @@ using WorkOps.Infrastructure.Persistence;
 namespace WorkOps.IntegrationTests;
 
 [TestClass]
-public sealed class TenantQueryFilterTests
+public sealed partial class TenantQueryFilterTests
 {
     private static readonly PostgreSqlContainer Database = new PostgreSqlBuilder("postgres:18.4-alpine")
         .Build();
@@ -1055,7 +1055,8 @@ public sealed class TenantQueryFilterTests
         Uri? rabbitUri = null,
         bool enableCache = false,
         string? redisConnectionString = null,
-        string? fileRoot = null)
+        string? fileRoot = null,
+        Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor? interceptor = null)
     {
         var configurationValues = new Dictionary<string, string?>(StringComparer.Ordinal)
         {
@@ -1088,6 +1089,11 @@ public sealed class TenantQueryFilterTests
         var services = new ServiceCollection();
         services.AddWorkOpsApplication();
         services.AddWorkOpsInfrastructure(configuration);
+        if (interceptor is not null)
+        {
+            services.AddDbContext<WorkOpsDbContext>(options => options.AddInterceptors(interceptor));
+        }
+
         services.AddSingleton<ICorrelationContext>(new TestCorrelationContext());
         return services.BuildServiceProvider();
     }

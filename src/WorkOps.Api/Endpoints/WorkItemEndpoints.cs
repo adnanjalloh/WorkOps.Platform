@@ -18,6 +18,9 @@ internal static class WorkItemEndpoints
         var group = endpoints.MapGroup("/api/v1/work-items")
             .RequireAuthorization()
             .WithMetadata(new WorkspaceContextRequirement(WorkspaceContextSource.Header));
+        group.MapGet("/", ListAsync)
+            .RequireAuthorization(Permissions.ProjectsRead)
+            .WithName("ListWorkItems");
         group.MapGet("/{workItemId:guid}", GetAsync)
             .RequireAuthorization(Permissions.ProjectsRead)
             .WithName("GetWorkItem");
@@ -29,6 +32,29 @@ internal static class WorkItemEndpoints
             .WithName("TransitionWorkItem");
 
         return endpoints;
+    }
+
+    private static async Task<IResult> ListAsync(
+        WorkItemService workItemService,
+        CancellationToken cancellationToken,
+        [SkipSanitization(Reason = "The query value is parsed as an integer and range validated before use.")]
+        int page = 1,
+        [SkipSanitization(Reason = "The query value is parsed as an integer and range validated before use.")]
+        int pageSize = 20,
+        [SanitizeAs(SanitizationProfile.SearchText)] string? search = null,
+        [SanitizeAs(SanitizationProfile.Identifier)] string? status = null,
+        [SkipSanitization(Reason = "The optional query value is parsed as a Guid and rejects an empty Guid.")]
+        Guid? projectId = null,
+        [SkipSanitization(Reason = "The optional query value is parsed as a Guid and rejects an empty Guid.")]
+        Guid? assigneeUserId = null)
+    {
+        var result = await workItemService.ListAsync(
+            page, pageSize, search, status, projectId, assigneeUserId, cancellationToken);
+        return Results.Ok(new PagedResponse<WorkItemResponse>(
+            result.Items.Select(ToResponse).ToArray(),
+            result.Page,
+            result.PageSize,
+            result.TotalCount));
     }
 
     private static async Task<IResult> CreateAsync(

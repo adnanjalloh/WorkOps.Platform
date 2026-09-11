@@ -6,6 +6,13 @@ first release.
 
 ## [Unreleased]
 
+### Added
+
+- Tenant-scoped work-item listing with bounded, stable pagination and composable project, status,
+  assignee, and literal title filters; supporting indexes, API examples, and HTTP boundary tests.
+- Messaging recovery tests for cancellation, exhausted retries, abandoned leases, and notification
+  deduplication after an injected completion-write failure.
+
 ### Changed
 
 - Update Microsoft.NET.Test.Sdk to 18.9.0 and the MSTest adapter/framework together to 4.4.0.
@@ -18,6 +25,8 @@ first release.
 
 ### Fixed
 
+- Clear an uncommitted outbox completion timestamp when a failed completion save returns the message
+  to pending or failed state, keeping retry status and diagnostics consistent.
 - Regenerate downstream NuGet lockfiles for centrally pinned dependencies so locked restore includes
   the updated API, infrastructure, and test-project dependency graphs.
 

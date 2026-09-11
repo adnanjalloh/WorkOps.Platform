@@ -77,6 +77,8 @@ public sealed class OutboxMessage : IWorkspaceOwned
         int maximumAttempts,
         string errorCode)
     {
+        // MarkProcessed may have changed the tracked entity before its save failed.
+        ProcessedAt = null;
         LockedUntil = null;
         LastErrorCode = errorCode;
 

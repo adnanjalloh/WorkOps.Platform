@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using WorkOps.Application.Abstractions;
+using WorkOps.Application.Common.Pagination;
 using WorkOps.Application.WorkItems;
 using WorkOps.Domain.WorkItems;
 using WorkOps.Infrastructure.Persistence;
@@ -16,10 +17,55 @@ internal sealed class WorkItemStore(WorkOpsDbContext dbContext) : IWorkItemStore
             cancellationToken);
 
     public Task<WorkItemView?> GetAsync(Guid workItemId, CancellationToken cancellationToken) =>
-        dbContext.WorkItems
+        WorkItemViews(dbContext.WorkItems
             .AsNoTracking()
-            .Where(workItem => workItem.Id == workItemId)
-            .Select(workItem => new WorkItemView(
+            .Where(workItem => workItem.Id == workItemId))
+            .SingleOrDefaultAsync(cancellationToken);
+
+    public async Task<PagedResult<WorkItemView>> ListAsync(
+        int page,
+        int pageSize,
+        string? search,
+        WorkItemStatus? status,
+        Guid? projectId,
+        Guid? assigneeUserId,
+        CancellationToken cancellationToken)
+    {
+        var query = dbContext.WorkItems.AsNoTracking();
+        if (search is not null)
+        {
+            // SearchText rejects SQL wildcards; escape the remaining LIKE escape character.
+            var pattern = $"%{search.Replace("\\", "\\\\", StringComparison.Ordinal)}%";
+            query = query.Where(workItem => EF.Functions.ILike(workItem.Title, pattern, "\\"));
+        }
+
+        if (status.HasValue)
+        {
+            query = query.Where(workItem => workItem.Status == status.Value);
+        }
+
+        if (projectId.HasValue)
+        {
+            query = query.Where(workItem => workItem.ProjectId == projectId.Value);
+        }
+
+        if (assigneeUserId.HasValue)
+        {
+            query = query.Where(workItem => workItem.AssigneeUserId == assigneeUserId.Value);
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var pageQuery = query
+            .OrderByDescending(workItem => workItem.CreatedAt)
+            .ThenByDescending(workItem => workItem.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize);
+        var items = await WorkItemViews(pageQuery).ToArrayAsync(cancellationToken);
+        return new PagedResult<WorkItemView>(items, page, pageSize, totalCount);
+    }
+
+    private IQueryable<WorkItemView> WorkItemViews(IQueryable<WorkItem> workItems) =>
+        workItems.Select(workItem => new WorkItemView(
                 workItem.Id,
                 workItem.ProjectId,
                 workItem.Title,
@@ -33,6 +79,5 @@ internal sealed class WorkItemStore(WorkOpsDbContext dbContext) : IWorkItemStore
                 workItem.Labels,
                 workItem.Version,
                 workItem.CreatedAt,
-                workItem.UpdatedAt))
-            .SingleOrDefaultAsync(cancellationToken);
+                workItem.UpdatedAt));
 }
