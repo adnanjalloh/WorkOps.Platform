@@ -41,17 +41,18 @@ The scheduled/manual `Full stack demo` workflow is configured to run the Bash sc
 host after non-installing bootstrap validation, screen its logs for bearer/JWT/credential markers
 before displaying or uploading them, and retain synthetic log/JSON evidence only when that
 fail-closed gate passes. Its UTC timestamps and elapsed seconds are dated observations, not an SLA.
-The [public full-stack run] passed
-at the reviewed commit. These scripts are reviewer tools, not substitutes for the automated suites.
+The [public full-stack run] passed on 2026-09-09 at application commit `0146705`.
+These scripts are reviewer tools, not substitutes for the automated suites.
 
-Local verification on 2026-08-02 reported 90.3% line coverage and 48.9% branch coverage, with all 106
-tests passing. Public [CI] and [CodeQL] runs also passed at the reviewed commit. CI merges collector
+The [retained 2026-09-09 report](verification/2026-09-09.md) records all 106 tests passing in [CI],
+with ReportGenerator reporting 90.3% line coverage and 48.9% branch coverage. [CodeQL] passed on
+2026-09-07 at the same application commit. CI merges collector
 output, publishes HTML/Cobertura/Markdown evidence, and requires at least 70% lines and 35% branches.
 These are regression floors rather than quality targets.
 
-[public full-stack run]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/30727906844
-[CI]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/30727069465
-[CodeQL]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/30727069476
+[public full-stack run]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/34328693950
+[CI]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/33873683288/attempts/2
+[CodeQL]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/34105987836
 
 ## Planned suites
 
