@@ -2,6 +2,13 @@
 
 This page separates dated generated evidence from repository configuration and future work. Results apply only to the referenced commit and environment.
 
+## Local work-item query and recovery verification — 2026-09-11
+
+The [query/recovery report](verification/2026-09-11-work-item-queries.md) records all 134 cases
+passing, a zero-warning Release build, locked restore, coverage gates, and model/migration checks.
+It identifies the tested source commit and the completion-timestamp bug reproduced and fixed by
+the new recovery test. Hosted checks remain separate evidence on the implementation PR.
+
 ## Local dependency repair verification — 2026-09-11
 
 The [dependency repair report](verification/2026-09-11.md) records the updated OpenTelemetry/Redis

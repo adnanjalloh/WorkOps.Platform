@@ -217,9 +217,9 @@ dotnet test -c Release --no-build --logger "trx" --collect:"XPlat Code Coverage"
 ```
 
 The 134 tests comprise 61 unit, 25 PostgreSQL/Redis/RabbitMQ/storage integration, 40 full-host
-functional, and 8 architecture tests. The historical [2026-09-09 CI result](docs/verification/2026-09-09.md)
-reports 90.3% line and 48.9% branch
-coverage. CI merges coverage, publishes HTML/Cobertura/Markdown evidence, and enforces the 70% line
+functional, and 8 architecture tests. The [2026-09-11 query/recovery report](docs/verification/2026-09-11-work-item-queries.md)
+records 91.3% line and 51.3% branch coverage, including generated migration code.
+CI merges coverage, publishes HTML/Cobertura/Markdown evidence, and enforces the 70% line
 / 35% branch floors. A scheduled/manual workflow runs the complete Compose golden scenario, screens
 its synthetic evidence for credential-like content, and blocks unsafe output. See [testing](docs/testing.md).
 

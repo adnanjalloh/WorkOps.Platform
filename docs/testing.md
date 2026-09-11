@@ -62,6 +62,11 @@ The [2026-09-11 local dependency repair report](verification/2026-09-11.md) reco
 OpenTelemetry/Redis graph passing the same 106 tests and coverage floors with SDK `10.0.400`.
 It distinguishes local verification from the hosted results above and the required PR checks.
 
+The later [work-item query/recovery report](verification/2026-09-11-work-item-queries.md) records
+134 passing cases and 91.3% line / 51.3% branch coverage at its own source commit. Generated migration
+code is included in those totals; the report documents the specific behavioral regressions and
+keeps hosted workflow results separate from local verification.
+
 [public full-stack run]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/34328693950
 [CI]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/33873683288/attempts/2
 [CodeQL]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/34105987836
