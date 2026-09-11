@@ -79,6 +79,13 @@ single-label, or `.internal` collector. Export is disabled by default. Service, 
 source versions come from the assembly informational version set by the release build. Do not add
 user IDs, email, tokens, work-item titles, raw URLs, or submitted values as labels.
 
+With OpenTelemetry `1.18.0`, the OTLP exporter's default maximum request size is 64 MiB (previously
+128 MiB), and the default maximum response size is 4 MiB. Oversized request batches are dropped;
+oversized responses are treated as non-retryable failures. This application uses the exporter
+defaults and does not expose these size limits as `Observability:Otlp` settings. Review collector
+compatibility and batch sizes before enabling export. See the
+[upstream release notes](https://github.com/open-telemetry/opentelemetry-dotnet/releases/tag/core-1.18.0).
+
 Rate limiting defaults to 60 requests per 60 seconds per authenticated subject, or per remote IP
 before authentication. Health endpoints are exempt. `Cors:AllowedOrigins` is empty by default;
 production origins must be explicit HTTPS origins. OpenAPI JSON is available only in Development at
@@ -157,6 +164,10 @@ the generated tenant/storage-name format. It never deletes database rows or atte
 missing content.
 
 ## Release process
+
+Before preparing a release, follow [dependency maintenance](testing.md#dependency-updates), run the
+required CI checks, and record evidence for the candidate commit. Historical verification reports
+and the published `v0.1.0` image do not establish verification of a newer dependency graph.
 
 The release workflow accepts only `vMAJOR.MINOR.PATCH` tags at the current `master` head. A read-only
 job restores locked dependencies, verifies formatting, builds, tests with the same coverage gate as

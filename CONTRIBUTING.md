@@ -21,6 +21,10 @@ docker compose config
 
 ## Change expectations
 
+For package or action changes, follow the [dependency-update procedure](docs/testing.md#dependency-updates).
+Regenerate lockfiles for the complete solution and commit every affected consumer, then verify
+locked restore. Update the changelog and operational notes when an upstream release changes behavior.
+
 Create a focused branch and pull request. Explain motivation, design, security and privacy impact,
 tests, and relevant operational effects. Keep commits intentional and do not manufacture activity.
 

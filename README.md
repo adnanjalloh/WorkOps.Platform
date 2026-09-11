@@ -179,7 +179,9 @@ and create no duplicate demo records. Stop the stack without deleting its databa
 `./scripts/bootstrap.sh --cleanup` or `./scripts/bootstrap.ps1 -Cleanup`; both preserve named
 volumes.
 
-For a code-only start:
+For a code-only start, install the .NET SDK specified in `global.json` (currently `10.0.400`)
+and configure the API's database and identity dependencies as described in
+[operations](docs/operations.md):
 
 ```bash
 dotnet restore --locked-mode
@@ -220,6 +222,11 @@ its synthetic evidence for credential-like content, and blocks unsafe output. Se
 
 ## Verification and release
 
+The [2026-09-11 dependency repair report](docs/verification/2026-09-11.md) records local verification
+of the OpenTelemetry/Redis upgrades: locked restore, formatting, a zero-warning Release build,
+106 passing tests, coverage gates, and a clean dependency audit. It identifies the tested source
+commit and keeps those local results separate from hosted and release evidence.
+
 The [dated verification report](docs/verification/2026-09-09.md) records a successful CI rerun on
 2026-09-09 for application commit `0146705`: a zero-warning Release build, 106 passing tests,
 coverage gates, and the configured dependency, secret, and container scans. The same commit passed
@@ -245,6 +252,14 @@ OTLP export is disabled until an endpoint is explicitly configured.
 
 Read [operations](docs/operations.md) for health, message recovery, rate limits, cache/file settings,
 diagnostic correlation, and the release process.
+
+## Dependency maintenance
+
+Package versions live in `Directory.Packages.props`; all affected `packages.lock.json` files must
+be refreshed across the solution in the same change. Dependabot groups OpenTelemetry, MSTest, and
+the CodeQL action steps that need coordinated updates. Grouping does not guarantee complete
+transitive lockfiles: follow the [dependency-update procedure](docs/testing.md#dependency-updates)
+and require a passing locked restore, build, tests, and GitHub checks before merging.
 
 ## Review paths
 

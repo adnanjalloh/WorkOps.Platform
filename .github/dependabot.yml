@@ -5,12 +5,23 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    groups:
+      opentelemetry:
+        patterns:
+          - "OpenTelemetry.*"
+      mstest:
+        patterns:
+          - "MSTest.*"
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    groups:
+      codeql:
+        patterns:
+          - "github/codeql-action/*"
 
   - package-ecosystem: docker
     directory: /

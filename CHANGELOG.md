@@ -6,6 +6,21 @@ first release.
 
 ## [Unreleased]
 
+### Changed
+
+- Update Microsoft.NET.Test.Sdk to 18.9.0 and the MSTest adapter/framework together to 4.4.0.
+- Refresh pinned release actions to anchore/sbom-action 0.24.2 and softprops/action-gh-release 3.0.3.
+- Upgrade OpenTelemetry packages together to 1.18.0 and StackExchange.Redis to 3.1.31.
+- Update CodeQL initialization and analysis together to the pinned 4.37.9 release.
+- Group related OpenTelemetry, MSTest, and CodeQL Dependabot updates and document solution-wide
+  lockfile refresh, required checks, and superseded-PR handling.
+- Document OpenTelemetry 1.18.0's 64 MiB default OTLP request limit and 4 MiB response limit.
+
+### Fixed
+
+- Regenerate downstream NuGet lockfiles for centrally pinned dependencies so locked restore includes
+  the updated API, infrastructure, and test-project dependency graphs.
+
 ## [0.1.0] - 2026-08-04
 
 ### Added

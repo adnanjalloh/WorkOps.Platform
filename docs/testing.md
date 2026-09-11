@@ -50,6 +50,10 @@ with ReportGenerator reporting 90.3% line coverage and 48.9% branch coverage. [C
 output, publishes HTML/Cobertura/Markdown evidence, and requires at least 70% lines and 35% branches.
 These are regression floors rather than quality targets.
 
+The [2026-09-11 local dependency repair report](verification/2026-09-11.md) records the upgraded
+OpenTelemetry/Redis graph passing the same 106 tests and coverage floors with SDK `10.0.400`.
+It distinguishes local verification from the hosted results above and the required PR checks.
+
 [public full-stack run]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/34328693950
 [CI]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/33873683288/attempts/2
 [CodeQL]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/34105987836
@@ -65,6 +69,10 @@ Container-backed suites use supported providers rather than mocked database beha
 tests use `TimeProvider`; tests do not depend on sleeps or local time.
 
 ## Commands
+
+Use the SDK selected by `global.json` (`10.0.400`, with compatible patch roll-forward) and a
+running Docker daemon for the integration and functional suites. Run these commands from the
+repository root.
 
 Validate the containerized reviewer path without installing tools or starting services:
 
@@ -91,3 +99,33 @@ dotnet test -c Release --no-build --maxcpucount:1 --collect:"XPlat Code Coverage
 dotnet tool run reportgenerator -- "-reports:artifacts/test-results/**/coverage.cobertura.xml" "-targetdir:artifacts/coverage" "-assemblyfilters:+WorkOps.*;-WorkOps.*Tests;-* *" "-classfilters:-Microsoft.AspNetCore.OpenApi.Generated.*;-System.Runtime.CompilerServices.*" "-reporttypes:Cobertura;TextSummary"
 ./scripts/check-coverage.sh artifacts/coverage/Cobertura.xml 70 35
 ```
+
+## Dependency updates
+
+Versions are centrally managed in `Directory.Packages.props`, with central transitive pinning.
+A package change in the API or infrastructure can also change dependencies in the projects that
+reference it. Updating only the direct consumer's lockfile leaves those projects inconsistent and
+causes `NU1004` during CI's locked restore.
+
+After changing versions or checking out a Dependabot PR, regenerate the entire solution graph:
+
+```bash
+dotnet restore WorkOps.Platform.slnx --force-evaluate -p:RestoreLockedMode=false
+git diff -- Directory.Packages.props ':(glob)**/packages.lock.json'
+dotnet restore WorkOps.Platform.slnx --locked-mode
+dotnet format --verify-no-changes --no-restore
+dotnet build -c Release --no-restore
+dotnet test -c Release --no-build --maxcpucount:1 --logger "trx" --collect:"XPlat Code Coverage"
+dotnet list package --vulnerable --include-transitive
+```
+
+Review and commit every affected lockfile, including test projects and transitive consumers.
+Check for unrelated dependency churn before committing. The unlocked restore above is an explicit
+maintenance step; CI and release builds continue to use `--locked-mode`. Keep the required checks
+enabled and refresh a PR against `master` when branch protection requires it.
+
+Dependabot groups `OpenTelemetry.*`, `MSTest.*`, and `github/codeql-action/*` in
+[its configuration](../.github/dependabot.yml). Keep MSTest's adapter and framework compatible,
+and pin CodeQL `init` and `analyze` to the same release commit. Grouping prevents split updates but
+does not replace solution-wide lockfile regeneration or compatibility review. If one PR supersedes
+another, merge the verified replacement before closing the redundant PR.
