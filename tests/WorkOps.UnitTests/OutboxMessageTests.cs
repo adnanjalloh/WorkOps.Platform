@@ -73,4 +73,26 @@ public sealed class OutboxMessageTests
         Assert.IsNull(message.LockedUntil);
         Assert.AreEqual(now.AddSeconds(1), message.ProcessedAt);
     }
+
+    [TestMethod]
+    [DataRow(1, OutboxMessageStatus.Pending)]
+    [DataRow(5, OutboxMessageStatus.Failed)]
+    public void Failed_completion_save_clears_the_uncommitted_processed_timestamp(
+        int attempts, OutboxMessageStatus expectedStatus)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var message = OutboxMessage.Create(Guid.NewGuid(), WorkspaceId.New(),
+            "work-item.status-changed.v1", "{}", now);
+        for (var attempt = 0; attempt < attempts; attempt++)
+        {
+            message.Lease(now.AddSeconds(30));
+        }
+
+        message.MarkProcessed(now);
+        message.MarkPublishFailure(now, now.AddSeconds(5), 5, "transport_publish_failed");
+
+        Assert.AreEqual(expectedStatus, message.Status);
+        Assert.IsNull(message.ProcessedAt);
+        Assert.IsNull(message.LockedUntil);
+    }
 }

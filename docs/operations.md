@@ -65,6 +65,13 @@ message bodies and credentials must not be copied into tickets or logs.
 
 The current code emits low-cardinality message result, outbox duration, and outbox backlog metrics.
 
+The [recovery regression](../tests/WorkOps.IntegrationTests/OutboxRecoveryTests.cs) uses a virtual
+clock, real PostgreSQL persistence, and an injected completion-save failure. It verifies that an
+abandoned lease cannot be reclaimed early, a due retry reuses the original message ID, and repeated
+delivery produces one inbox receipt and one notification. Pending/failed records clear any
+uncommitted completion timestamp. This test invokes the consumer through a deterministic publisher;
+it does not simulate a RabbitMQ outage, network partition, or overlapping live workers after expiry.
+
 ## Diagnostics and HTTP controls
 
 Every response returns `X-Correlation-Id`; Problem Details also include `correlationId` and

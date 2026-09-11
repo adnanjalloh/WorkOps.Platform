@@ -92,6 +92,13 @@ These are configured and tested delivery controls, not evidence of a hosted prod
 
 ## Next steps
 
-The next portfolio milestones are tracked as focused issues and pull requests. Higher-value production-boundary work includes a durable object-storage adapter, a real scanner adapter, a local observability stack, richer member lifecycle behavior, work-item search, recovery evidence, and reproducible local performance evidence.
+Work-item listing now includes bounded pagination, composable filters, and tenant-isolation tests;
+see the [query contract](work-item-queries.md). Targeted messaging tests cover abandoned leases and
+completion-write failure recovery without duplicate notifications.
+
+The next portfolio milestones are tracked as focused issues and pull requests. Remaining work
+includes a durable object-storage adapter, a real scanner adapter, a local observability stack,
+richer member lifecycle behavior, broker-outage and operational recovery evidence, and reproducible
+local performance evidence.
 
 Tags, releases, packages, and cloud resources require separate approval and generated evidence.

@@ -1,6 +1,7 @@
 using WorkOps.Application.Abstractions;
 using WorkOps.Application.Audit;
 using WorkOps.Application.Common;
+using WorkOps.Application.Common.Pagination;
 using WorkOps.Application.Common.Sanitization;
 using WorkOps.Application.Common.Validation;
 using WorkOps.Application.Messaging;
@@ -75,6 +76,46 @@ public sealed class WorkItemService(
 
     public Task<WorkItemView?> GetAsync(Guid workItemId, CancellationToken cancellationToken) =>
         workItems.GetAsync(workItemId, cancellationToken);
+
+    public Task<PagedResult<WorkItemView>> ListAsync(
+        int page,
+        int pageSize,
+        string? search,
+        string? status,
+        Guid? projectId,
+        Guid? assigneeUserId,
+        CancellationToken cancellationToken)
+    {
+        if (page is < 1 or > 10_000 || pageSize is < 1 or > 100)
+        {
+            throw new RequestValidationException("invalid_pagination");
+        }
+
+        if (projectId == Guid.Empty || assigneeUserId == Guid.Empty)
+        {
+            throw new RequestValidationException("invalid_work_item_filter");
+        }
+
+        var safeSearch = string.IsNullOrWhiteSpace(search)
+            ? null
+            : sanitizer.Apply(search, InputProfile.SearchText, "query.search");
+        WorkItemStatus? parsedStatus = null;
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            var safeStatus = sanitizer.Apply(status, InputProfile.Identifier, "query.status");
+            if (!Enum.TryParse<WorkItemStatus>(safeStatus, true, out var value) ||
+                !Enum.IsDefined(value) ||
+                !string.Equals(value.ToString(), safeStatus, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new RequestValidationException("invalid_work_item_status");
+            }
+
+            parsedStatus = value;
+        }
+
+        return workItems.ListAsync(
+            page, pageSize, safeSearch, parsedStatus, projectId, assigneeUserId, cancellationToken);
+    }
 
     public async Task<WorkItemView?> UpdateAsync(
         Guid workItemId,

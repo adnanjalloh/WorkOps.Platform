@@ -116,6 +116,11 @@ Content-Type: application/json
   "expectedVersion": "{{updatedVersion}}"
 }
 
+### List in-progress work assigned to the contributor
+GET {{api}}/api/v1/work-items/?page=1&pageSize=20&projectId={{projectId}}&status=InProgress&assigneeUserId={{contributorUserId}}&search=tenant
+Authorization: Bearer {{contributorAccessToken}}
+X-Workspace-Id: {{workspaceId}}
+
 ### Stale transition - expect 409 concurrency_conflict
 POST {{api}}/api/v1/work-items/{{workItemId}}/transitions
 Authorization: Bearer {{contributorAccessToken}}

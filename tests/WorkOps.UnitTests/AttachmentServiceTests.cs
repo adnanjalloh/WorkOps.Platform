@@ -111,6 +111,15 @@ public sealed class AttachmentServiceTests
 
     private sealed class TestWorkItemStore : IWorkItemStore
     {
+        public Task<PagedResult<WorkItemView>> ListAsync(
+            int page,
+            int pageSize,
+            string? search,
+            WorkItemStatus? status,
+            Guid? projectId,
+            Guid? assigneeUserId,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
+
         public void Add(WorkItem workItem) => throw new NotSupportedException();
 
         public Task<WorkItem?> FindAsync(Guid workItemId, CancellationToken cancellationToken)

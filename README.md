@@ -4,6 +4,9 @@ WorkOps.Platform is a .NET API for teams to manage projects and work items in se
 Owners invite colleagues, contributors update work, and viewers have read-only access. The backend
 keeps each workspace's data separate and records changes with an audit trail and notifications.
 
+Members can [browse and filter work items](docs/work-item-queries.md) by project, status, assignee,
+and title, with bounded pagination and stable newest-first ordering.
+
 Built by **Adnan Alloh, Senior .NET Backend Engineer in Mannheim, Germany**.
 
 The project demonstrates how I handle problems that come up in business software:
@@ -213,8 +216,8 @@ dotnet build -c Release --no-restore
 dotnet test -c Release --no-build --logger "trx" --collect:"XPlat Code Coverage"
 ```
 
-The 106 tests comprise 53 unit, 24 PostgreSQL/Redis/RabbitMQ/storage integration, 21 full-host
-functional, and 8 architecture tests. The [2026-09-09 CI result](docs/verification/2026-09-09.md)
+The 134 tests comprise 61 unit, 25 PostgreSQL/Redis/RabbitMQ/storage integration, 40 full-host
+functional, and 8 architecture tests. The historical [2026-09-09 CI result](docs/verification/2026-09-09.md)
 reports 90.3% line and 48.9% branch
 coverage. CI merges coverage, publishes HTML/Cobertura/Markdown evidence, and enforces the 70% line
 / 35% branch floors. A scheduled/manual workflow runs the complete Compose golden scenario, screens

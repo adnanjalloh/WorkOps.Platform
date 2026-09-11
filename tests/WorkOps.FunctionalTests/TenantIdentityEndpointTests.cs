@@ -39,7 +39,7 @@ using WorkOps.Infrastructure.Persistence;
 namespace WorkOps.FunctionalTests;
 
 [TestClass]
-public sealed class TenantIdentityEndpointTests
+public sealed partial class TenantIdentityEndpointTests
 {
     private static readonly string[] ExpectedFlowLabels = ["backend", "tenant-safe"];
     private static WorkOpsWebApplicationFactory _factory = null!;
