@@ -83,7 +83,7 @@ tests use `TimeProvider`; tests do not depend on sleeps or local time.
 
 ## Commands
 
-Use the SDK selected by `global.json` (`10.0.400`, with compatible patch roll-forward) and a
+Use the SDK selected by `global.json` (`10.0.401`, with compatible patch roll-forward) and a
 running Docker daemon for the integration and functional suites. Run these commands from the
 repository root.
 
@@ -137,8 +137,17 @@ Check for unrelated dependency churn before committing. The unlocked restore abo
 maintenance step; CI and release builds continue to use `--locked-mode`. Keep the required checks
 enabled and refresh a PR against `master` when branch protection requires it.
 
-Dependabot groups `OpenTelemetry.*`, `MSTest.*`, and `github/codeql-action/*` in
-[its configuration](../.github/dependabot.yml). Keep MSTest's adapter and framework compatible,
+Dependabot groups related Microsoft platform/OpenAPI packages, `OpenTelemetry.*`, `MSTest.*`,
+`github/codeql-action/*`, and .NET Docker images in [its configuration](../.github/dependabot.yml).
+The Microsoft package group covers patch/minor updates; major upgrades still need separate review.
+Keep MSTest's adapter and framework compatible,
 and pin CodeQL `init` and `analyze` to the same release commit. Grouping prevents split updates but
 does not replace solution-wide lockfile regeneration or compatibility review. If one PR supersedes
 another, merge the verified replacement before closing the redundant PR.
+
+For a .NET servicing update, align `global.json`, both Dockerfile images, all `setup-dotnet` pins
+in CI/CodeQL/release workflows, centrally managed Microsoft platform packages, and `dotnet-ef` in
+`.config/dotnet-tools.json`. SDK and runtime version numbers differ: SDK `10.0.401` contains runtime
+`10.0.12`. Grouping cannot update every cross-file/cross-ecosystem pin or guarantee complete
+lockfiles; retain bootstrap's SDK-alignment check and refresh the whole solution. Respect new
+transitive requirements such as ASP.NET Core OpenAPI's minimum Microsoft.OpenApi version.

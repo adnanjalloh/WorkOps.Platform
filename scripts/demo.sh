@@ -136,10 +136,33 @@ show_summary() {
   printf '  API URL:          %s\n' "$api_url"
   printf '  Identity URL:     %s\n' "$identity_url"
   printf '  Scenario status:  passed\n'
-  printf '  Evidence checks:  authorization, tenant isolation, concurrency, audit, outbox notification\n'
+  printf '  Evidence checks:  filtering, authorization, tenant isolation, concurrency, audit, outbox notification\n'
   printf '  Evidence path:    %s\n' "$evidence_directory"
   printf '  Cleanup command:  ./scripts/bootstrap.sh --cleanup\n'
   printf '  Tokens:           not intentionally printed or persisted by this script\n'
+}
+
+check_filtered_work_item() {
+  local workspace_id=$1
+  local project_id=$2
+  local work_item_id=$3
+  local assignee_user_id=$4
+  local outsider_workspace_id=$5
+  local query="/api/v1/work-items/?page=1&pageSize=20&projectId=$project_id&status=InProgress&assigneeUserId=$assignee_user_id&search=tenant"
+
+  step "Finding assigned work with combined filters"
+  http_json GET "$query" "$contributor_token" "$workspace_id"
+  expect_status 200 "filtered work-item list"
+  jq -e --arg id "$work_item_id" \
+    '.page == 1 and .pageSize == 20 and .totalCount == 1 and (.items | length) == 1 and .items[0].id == $id' \
+    <<< "$HTTP_BODY" >/dev/null || fail "Combined filters did not return exactly the expected work item"
+  pass "project, status, assignee, and title filters returned the expected work item"
+
+  http_json GET "$query" "$outsider_token" "$outsider_workspace_id"
+  expect_status 200 "foreign project filter"
+  jq -e '.totalCount == 0 and (.items | length) == 0' <<< "$HTTP_BODY" >/dev/null \
+    || fail "Foreign project filter exposed rows or counts"
+  pass "the same filters in the outsider workspace returned no rows or counts"
 }
 
 require_command curl
@@ -174,8 +197,12 @@ if [[ -f "$state_file" ]]; then
   if [[ -n "$workspace_id" && -n "$work_item_id" ]]; then
     http_json GET "/api/v1/work-items/$work_item_id" "$contributor_token" "$workspace_id"
     if [[ "$HTTP_STATUS" == "200" ]]; then
+      contributor_user_id=$(jq -er '.assigneeUserId' <<< "$HTTP_BODY")
       step "Reusing the saved idempotent demo state"
       pass "existing work item is visible to its contributor"
+
+      check_filtered_work_item "$workspace_id" "$project_id" "$work_item_id" \
+        "$contributor_user_id" "$outsider_workspace_id"
 
       stale_payload=$(jq -cn --arg status Blocked --arg version "$stale_version" \
         '{targetStatus:$status,expectedVersion:$version}')
@@ -195,7 +222,7 @@ if [[ -f "$state_file" ]]; then
   fi
 fi
 
-run_id=$(date -u +%Y%m%d%H%M%S)
+run_id="$(date -u +%Y%m%d%H%M%S)-${RANDOM}${RANDOM}"
 
 step "Creating two isolated workspaces"
 owner_workspace_payload=$(jq -cn --arg name "WorkOps Demo" --arg slug "workops-demo-$run_id" \
@@ -269,6 +296,9 @@ http_json POST "/api/v1/work-items/$work_item_id/transitions" \
 expect_status 200 "work-item transition"
 current_version=$(jq -er '.version' <<< "$HTTP_BODY")
 pass "work item moved from Backlog to InProgress"
+
+check_filtered_work_item "$workspace_id" "$project_id" "$work_item_id" \
+  "$contributor_user_id" "$outsider_workspace_id"
 
 step "Checking stale-write and tenant boundaries"
 stale_payload=$(jq -cn --arg status Blocked --arg version "$updated_version" \

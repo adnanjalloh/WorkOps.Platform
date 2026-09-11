@@ -11,9 +11,11 @@ Docker Compose. It uses only synthetic local users and data, and checks:
 4. project creation plus exact `Idempotency-Key` replay;
 5. viewer write denial as `403 Forbidden`;
 6. assigned and labeled work-item creation, update, and `Backlog -> InProgress` transition;
-7. stale-version rejection as `409 concurrency_conflict`;
-8. cross-workspace lookup denial as a non-disclosing `404`;
-9. visible safe transition audit and outbox-delivered notification.
+7. combined project/status/assignee/title filters returning the expected work item;
+8. the same filters in the outsider workspace returning zero rows and zero matching count;
+9. stale-version rejection as `409 concurrency_conflict`;
+10. cross-workspace lookup denial as a non-disclosing `404`;
+11. visible safe transition audit and outbox-delivered notification.
 
 Tokens are not intentionally printed or persisted by the scripts. Bash passes bearer headers to
 `curl` through standard-input configuration rather than child-process arguments. The saved state
@@ -43,8 +45,16 @@ local API and identity URLs, scenario status, proposed evidence path, and explic
 commands.
 
 The first Keycloak import can take up to two minutes. The scripts save successful IDs under the
-ignored `.local/` directory. A repeat run reuses those IDs, verifies the current work item, and
-rechecks the stale-write and outsider boundaries without duplicating records.
+ignored `.local/` directory. A repeat run reuses those IDs, verifies the current work item and
+combined filters, and rechecks the stale-write and outsider boundaries without duplicating records.
+It reads the assignee from the existing item, so older saved state files remain usable without
+adding new fields. Use a fresh state file for a complete presentation if you have manually changed
+the demo item's title, status, or assignee. Fresh-run slugs include a nonce to distinguish quick
+successive demonstrations.
+
+The hosted full-stack workflow exercises fresh and replay paths for both Bash and PowerShell on
+Linux. Each scenario log is screened before display/upload; the summary passes only if all four
+paths pass. This is not a claim of a separate Windows/macOS PowerShell run.
 
 > This stack is for a local, single-user demonstration. API and identity ports bind to loopback;
 > PostgreSQL, RabbitMQ, and Redis are reachable only through the private Compose network.

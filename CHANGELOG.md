@@ -15,6 +15,13 @@ first release.
 
 ### Changed
 
+- Align SDK 10.0.401 across local metadata, Docker, CI, CodeQL, and release verification; update
+  runtime, ASP.NET Core/EF/Extensions packages, and dotnet-ef together to 10.0.12.
+- Update Microsoft.OpenApi to 2.12.0 to satisfy ASP.NET Core OpenAPI's new minimum, and
+  Microsoft.NET.Test.Sdk to 18.10.0; regenerate the solution dependency locks.
+- Group related Microsoft platform/OpenAPI updates and .NET container images for maintenance.
+- Refresh the two-minute interview guide and both demo scripts to demonstrate combined filters
+  and isolated result counts; exercise Bash/PowerShell fresh and replay paths in the hosted scenario.
 - Update Microsoft.NET.Test.Sdk to 18.9.0 and the MSTest adapter/framework together to 4.4.0.
 - Refresh pinned release actions to anchore/sbom-action 0.24.2 and softprops/action-gh-release 3.0.3.
 - Upgrade OpenTelemetry packages together to 1.18.0 and StackExchange.Redis to 3.1.31.

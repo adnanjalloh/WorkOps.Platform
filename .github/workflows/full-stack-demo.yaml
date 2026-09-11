@@ -44,6 +44,23 @@ jobs:
           WORKOPS_DEMO_EVIDENCE_DIR=artifacts/full-stack-demo \
             ./scripts/demo.sh --start > artifacts/full-stack-demo/demo.log 2>&1
           exit_code=$?
+          if [[ "$exit_code" -eq 0 ]]; then
+            WORKOPS_DEMO_EVIDENCE_DIR=artifacts/full-stack-demo \
+              ./scripts/demo.sh > artifacts/full-stack-demo/bash-replay.log 2>&1
+            exit_code=$?
+          fi
+          if [[ "$exit_code" -eq 0 ]]; then
+            WORKOPS_DEMO_STATE=.local/powershell-demo-state.json \
+              WORKOPS_DEMO_EVIDENCE_DIR=artifacts/full-stack-demo \
+              pwsh -NoProfile -File ./scripts/demo.ps1 > artifacts/full-stack-demo/powershell.log 2>&1
+            exit_code=$?
+          fi
+          if [[ "$exit_code" -eq 0 ]]; then
+            WORKOPS_DEMO_STATE=.local/powershell-demo-state.json \
+              WORKOPS_DEMO_EVIDENCE_DIR=artifacts/full-stack-demo \
+              pwsh -NoProfile -File ./scripts/demo.ps1 > artifacts/full-stack-demo/powershell-replay.log 2>&1
+            exit_code=$?
+          fi
           set -e
           completed_epoch=$(date +%s)
           completed_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -57,7 +74,14 @@ jobs:
             fi
           done
           cat artifacts/full-stack-demo/bootstrap.log
-          cat artifacts/full-stack-demo/demo.log
+          for scenario_log in artifacts/full-stack-demo/demo.log \
+            artifacts/full-stack-demo/bash-replay.log \
+            artifacts/full-stack-demo/powershell.log \
+            artifacts/full-stack-demo/powershell-replay.log; do
+            if [[ -f "$scenario_log" ]]; then
+              cat "$scenario_log"
+            fi
+          done
 
           if [[ "$exit_code" -eq 0 ]]; then
             status=passed
@@ -72,7 +96,7 @@ jobs:
             --arg startedAt "$started_at" \
             --arg completedAt "$completed_at" \
             --argjson elapsedSeconds "$elapsed_seconds" \
-            '{status: $status, commit: $commit, evidenceStatus: $evidenceStatus, startedAt: $startedAt, completedAt: $completedAt, elapsedSeconds: $elapsedSeconds, scenario: "compose-golden-flow", timingBoundary: "dated clean-host observation; not an SLA"}' \
+            '{status: $status, commit: $commit, evidenceStatus: $evidenceStatus, startedAt: $startedAt, completedAt: $completedAt, elapsedSeconds: $elapsedSeconds, scenario: "compose-golden-flow", scope: "Bash and PowerShell fresh and replay paths", timingBoundary: "dated clean-host observation; not an SLA"}' \
             > artifacts/full-stack-demo/summary.json
           exit "$exit_code"
 

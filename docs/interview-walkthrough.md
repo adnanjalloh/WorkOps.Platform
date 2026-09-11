@@ -29,11 +29,12 @@ The [demo guide](demo.md) explains the local services and manual HTTP collection
 
 | Time | Show | Suggested wording |
 | --- | --- | --- |
-| 0:00–0:20 | README introduction | "I'm Adnan, a .NET backend engineer based in Mannheim. WorkOps is a portfolio API for teams to manage projects and work items. I use it to demonstrate permissions, data isolation, and reliable processing." |
-| 0:20–0:45 | Terminal: project replay and viewer denial | "An owner creates a project and adds team members. If the same creation request is retried, it returns the original project. A viewer can read but cannot create a project; the API returns 403." |
-| 0:45–1:10 | Terminal: work-item transition, 409, and 404 | "A contributor moves a work item into progress. An update using an old version is rejected with 409. Someone in another workspace gets 404, so the response doesn't reveal that this item exists." |
-| 1:10–1:35 | Architecture diagram and outbox processor | "The change, audit entry, and outbox message are saved in one database transaction. A worker publishes the message through RabbitMQ. The consumer handles duplicate delivery. The demo waits until the audit and notification are visible." |
-| 1:35–2:00 | Tests and dated verification report | "I chose a modular monolith to keep the system straightforward to run and review. The tests cover permissions, concurrent edits, tenant boundaries, and messaging. This is a local portfolio demonstration; the identity, storage, and scanner setup would need production replacements." |
+| 0:00–0:15 | README introduction | "I'm Adnan, a .NET backend engineer based in Mannheim. WorkOps is a portfolio API for teams to manage projects and work items in separate workspaces." |
+| 0:15–0:35 | Terminal: project replay and viewer denial | "An owner creates a project and invites colleagues. Retrying the same creation request returns the original project. A viewer can read, but a write is rejected with 403." |
+| 0:35–0:55 | Terminal: transition and combined filters | "A contributor moves an item into progress, then finds it by project, status, assignee, and title. The same filters in another workspace return no rows or count, so filters cannot bypass data isolation." |
+| 0:55–1:15 | Terminal: stale-write and outsider checks | "An edit using an old version is rejected with 409 instead of overwriting newer work. A direct lookup from another workspace gets 404 without revealing that the item exists." |
+| 1:15–1:40 | Architecture diagram and audit/notification evidence | "The status change, audit entry, and outgoing message are saved together. A worker publishes through RabbitMQ, and the consumer suppresses duplicate effects. A regression test also covers delivery followed by a failed completion write." |
+| 1:40–2:00 | Tests and dated verification report | "I chose one deployable application to keep it straightforward to operate and review. The tests use real infrastructure where specified. This is a synthetic portfolio demo, not a production deployment." |
 
 The timing is a target for the explanation, not a performance claim. Pause on the terminal output
 as needed. If showing a recording of an earlier run, identify it as a recording with its date and
@@ -44,7 +45,9 @@ commit.
 - [Workspace context middleware](../src/WorkOps.Api/Tenancy/WorkspaceContextMiddleware.cs): how
   an authenticated user and membership establish the workspace boundary.
 - [Work-item service](../src/WorkOps.Application/WorkItems/WorkItemService.cs): updates, state
-  changes, and stale-version handling.
+  changes, filters, and stale-version handling.
+- [Query implementation](../src/WorkOps.Infrastructure/WorkItems/WorkItemStore.cs): tenant-filtered
+  counts and pages, parameterized title search, and creation-time ordering with a UUID tie-breaker.
 - [Outbox processor](../src/WorkOps.Application/Messaging/OutboxProcessor.cs): publication and
   retries.
 - [Functional tests](../tests/WorkOps.FunctionalTests/TenantIdentityEndpointTests.cs): the workflow
@@ -58,6 +61,11 @@ commit.
 4. What happens if a consumer processes a message but loses its acknowledgement?
 5. How does the caller recover from a 409 without discarding another person's changes?
 6. Which parts are real integrations, and which are demonstration adapters?
+7. Why can offset pages move when other users insert work? When would you choose cursor pagination?
+8. Why is a failed completion write after publication safe to retry, and what do the tests not cover?
+
+The downloadable v0.1.0 video remains a historical asset. The commands and outline here demonstrate
+the current code; no new narrated recording is claimed.
 
 Use the [case study](portfolio-case-study.md) and [reviewer guide](reviewer-guide.md) for the
 implementation tradeoffs behind these answers.

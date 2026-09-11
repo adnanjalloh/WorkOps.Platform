@@ -42,7 +42,7 @@ Docker · OpenTelemetry · GitHub Actions.
 ./scripts/demo.sh --start
 ```
 
-The script checks project creation, request replay, a work-item update, blocked access, a rejected
+The script checks project creation, request replay, a work-item update and filtered listing, blocked access, a rejected
 stale edit, and an audit entry with a delivered notification.
 For a live presentation, use the [two-minute interview walkthrough](docs/interview-walkthrough.md).
 
@@ -182,7 +182,7 @@ and create no duplicate demo records. Stop the stack without deleting its databa
 `./scripts/bootstrap.sh --cleanup` or `./scripts/bootstrap.ps1 -Cleanup`; both preserve named
 volumes.
 
-For a code-only start, install the .NET SDK specified in `global.json` (currently `10.0.400`)
+For a code-only start, install the .NET SDK specified in `global.json` (currently `10.0.401`)
 and configure the API's database and identity dependencies as described in
 [operations](docs/operations.md):
 
