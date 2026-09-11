@@ -50,6 +50,10 @@ with ReportGenerator reporting 90.3% line coverage and 48.9% branch coverage. [C
 output, publishes HTML/Cobertura/Markdown evidence, and requires at least 70% lines and 35% branches.
 These are regression floors rather than quality targets.
 
+The [2026-09-11 local dependency repair report](verification/2026-09-11.md) records the upgraded
+OpenTelemetry/Redis graph passing the same 106 tests and coverage floors with SDK `10.0.400`.
+It distinguishes local verification from the hosted results above and the required PR checks.
+
 [public full-stack run]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/34328693950
 [CI]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/33873683288/attempts/2
 [CodeQL]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/34105987836

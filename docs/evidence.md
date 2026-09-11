@@ -2,7 +2,15 @@
 
 This page separates dated generated evidence from repository configuration and future work. Results apply only to the referenced commit and environment.
 
-## Latest application verification — 2026-09-09
+## Local dependency repair verification — 2026-09-11
+
+The [dependency repair report](verification/2026-09-11.md) records the updated OpenTelemetry/Redis
+graph passing locked restore, formatting, a zero-warning Release build, all 106 tests, and coverage
+gates on macOS arm64 with .NET SDK `10.0.400`. The NuGet audit reported no vulnerable packages.
+The report identifies the tested source commit and distinguishes local checks from hosted merge
+gates and release evidence.
+
+## Hosted application verification — 2026-09-09
 
 Application commit `0146705ff95b05e3a382130976bad2a296756f17` passed a
 [fresh CI rerun](https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/33873683288/attempts/2)
@@ -67,7 +75,7 @@ code-signing mechanism or evidence of a production deployment.
 
 ## Public hosted evidence
 
-The application commit named in the latest verification report has public workflow results for:
+Application commit `0146705`, named in the 2026-09-09 hosted report, has public workflow results for:
 
 - [CI, attempt 2](https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/33873683288/attempts/2);
 - [CodeQL](https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/34105987836);

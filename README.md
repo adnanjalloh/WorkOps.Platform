@@ -222,6 +222,11 @@ its synthetic evidence for credential-like content, and blocks unsafe output. Se
 
 ## Verification and release
 
+The [2026-09-11 dependency repair report](docs/verification/2026-09-11.md) records local verification
+of the OpenTelemetry/Redis upgrades: locked restore, formatting, a zero-warning Release build,
+106 passing tests, coverage gates, and a clean dependency audit. It identifies the tested source
+commit and keeps those local results separate from hosted and release evidence.
+
 The [dated verification report](docs/verification/2026-09-09.md) records a successful CI rerun on
 2026-09-09 for application commit `0146705`: a zero-warning Release build, 106 passing tests,
 coverage gates, and the configured dependency, secret, and container scans. The same commit passed
