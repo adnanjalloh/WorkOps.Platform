@@ -1,39 +1,30 @@
 # WorkOps.Platform
 
-A production-minded ASP.NET Core/.NET 10 workflow API that makes tenant isolation, reliable
-messaging, secure file boundaries, observability, testing, and delivery controls easy to review.
+WorkOps.Platform is a .NET API for teams to manage projects and work items in separate workspaces.
+Owners invite colleagues, contributors update work, and viewers have read-only access. The backend
+keeps each workspace's data separate and records changes with an audit trail and notifications.
+
+Built by **Adnan Alloh, Senior .NET Backend Engineer in Mannheim, Germany**.
+
+The project demonstrates how I handle problems that come up in business software:
+
+- **Access control:** a viewer cannot create a project, and users cannot read another workspace's work items.
+- **Conflicting edits:** an update using an old version is rejected instead of overwriting newer work.
+- **Request retries:** replaying the same project-creation request returns the original project.
+- **Reliable notifications:** a work-item change and its outgoing message are saved together, with
+  duplicate handling when messages are delivered again.
+
+**Stack:** C# · .NET 10 / ASP.NET Core · EF Core · PostgreSQL · Redis · RabbitMQ · Keycloak ·
+Docker · OpenTelemetry · GitHub Actions.
 
 [![GitHub Release](https://img.shields.io/github/v/release/adnanjalloh/WorkOps.Platform?label=release)](https://github.com/adnanjalloh/WorkOps.Platform/releases/tag/v0.1.0)
 
 > Portfolio project by Adnan Alloh, Senior .NET Backend Engineer. All users, organizations, data,
 > credentials, and infrastructure values in this repository are synthetic and local-only.
 
-## Verified portfolio release
-
-**Not a production deployment.** Dated local verification reports a zero-warning Release build, 106
-passing tests, 90.3% line coverage, and 48.9% branch coverage. Public [CI], [CodeQL], and the
-[full-stack scenario] passed on the reviewed commit. CI enforces 70% line and 35% branch floors.
-The protected [v0.1.0 release] published a [public GHCR package] from commit `ed44d524` with an
-attached SPDX 2.3 SBOM, immutable digest evidence, and independently verified build-provenance and
-SBOM attestations. There is no hosted application deployment.
-
-[CI]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/30727069465
-[CodeQL]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/30727069476
-[full-stack scenario]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/30727906844
-[v0.1.0 release]: https://github.com/adnanjalloh/WorkOps.Platform/releases/tag/v0.1.0
-[public GHCR package]: https://github.com/users/adnanjalloh/packages/container/package/workops.platform
-
-- **Tenant safety:** validated identity plus active membership, default-deny data access, save-time
-  write guards, permission policies, and non-disclosing cross-workspace denial.
-- **Reliable delivery:** optimistic concurrency, idempotent commands, atomic audit/outbox writes,
-  publisher confirmation, retries, and duplicate-safe notification effects.
-- **Operational proof:** PostgreSQL, Redis, RabbitMQ, Keycloak, OpenTelemetry instrumentation,
-  structured logs, health checks, Docker, CI, CodeQL, and a synthetic golden scenario.
-- **Evidence boundary:** results are dated and commit-specific; configured scans are not presented
-  as timeless pass claims.
-
-**Review:** [2-minute guide](docs/reviewer-guide.md) · [case study](docs/portfolio-case-study.md) ·
-[evidence](docs/evidence.md) · [architecture](docs/architecture.md) · [security](docs/security.md)
+**Start here:** [2-minute guide](docs/reviewer-guide.md#two-minute-tour) ·
+[case study](docs/portfolio-case-study.md) · [verification results](docs/evidence.md) ·
+[contact Adnan](https://github.com/adnanjalloh#contact).
 
 ### Two-minute engineering tour
 
@@ -48,18 +39,20 @@ SBOM attestations. There is no hosted application deployment.
 ./scripts/demo.sh --start
 ```
 
+The script checks project creation, request replay, a work-item update, blocked access, a rejected
+stale edit, and an audit entry with a delivered notification.
+For a live presentation, use the [two-minute interview walkthrough](docs/interview-walkthrough.md).
+
 > Production boundary: the local identity realm, development scanner, temporary file storage, and
 > local credentials must be replaced and operated appropriately for a real deployment.
 
-## Thirty-second overview
+## How it is built
 
-WorkOps.Platform is a compact modular monolith for workspaces that manage projects and work items.
-Its purpose is to make difficult backend concerns easy to inspect: verified tenant context,
-least-privilege roles, optimistic concurrency, atomic audit/outbox writes, at-least-once delivery
-with idempotent effects, bounded file handling, safe diagnostics, and repeatable delivery controls.
-
-The design keeps business boundaries explicit without manufacturing a microservice estate. Every
-major claim below links to code, tests, or an operational artifact.
+The application is a modular monolith: one deployable API, with separate projects for HTTP
+contracts, use cases, domain rules, and infrastructure. PostgreSQL holds business data, Redis
+caches workspace entitlements, and an outbox worker publishes notifications through RabbitMQ.
+The [case study](docs/portfolio-case-study.md) explains the tradeoffs; the sections below link each
+control to its implementation and tests.
 
 ## Real adapters and demonstration adapters
 
@@ -219,10 +212,29 @@ dotnet test -c Release --no-build --logger "trx" --collect:"XPlat Code Coverage"
 ```
 
 The 106 tests comprise 53 unit, 24 PostgreSQL/Redis/RabbitMQ/storage integration, 21 full-host
-functional, and 8 architecture tests. The dated local result is 90.3% line and 48.9% branch
+functional, and 8 architecture tests. The [2026-09-09 CI result](docs/verification/2026-09-09.md)
+reports 90.3% line and 48.9% branch
 coverage. CI merges coverage, publishes HTML/Cobertura/Markdown evidence, and enforces the 70% line
 / 35% branch floors. A scheduled/manual workflow runs the complete Compose golden scenario, screens
 its synthetic evidence for credential-like content, and blocks unsafe output. See [testing](docs/testing.md).
+
+## Verification and release
+
+The [dated verification report](docs/verification/2026-09-09.md) records a successful CI rerun on
+2026-09-09 for application commit `0146705`: a zero-warning Release build, 106 passing tests,
+coverage gates, and the configured dependency, secret, and container scans. The same commit passed
+[CodeQL] on 2026-09-07 and the [full-stack scenario] on 2026-09-09. The report preserves the summary
+alongside links to the underlying runs; it does not rely on a permanently available CI artifact.
+
+The earlier [v0.1.0 release] and [public GHCR package] are from commit `ed44d524`, with an SPDX 2.3
+SBOM, immutable image digest evidence, and verified build-provenance/SBOM attestations. That release
+is distinct from the newer tested application commit. There is no hosted production deployment.
+
+[CI]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/33873683288/attempts/2
+[CodeQL]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/34105987836
+[full-stack scenario]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/34328693950
+[v0.1.0 release]: https://github.com/adnanjalloh/WorkOps.Platform/releases/tag/v0.1.0
+[public GHCR package]: https://github.com/users/adnanjalloh/packages/container/package/workops.platform
 
 ## Observability and operations
 

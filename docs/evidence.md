@@ -2,7 +2,20 @@
 
 This page separates dated generated evidence from repository configuration and future work. Results apply only to the referenced commit and environment.
 
-## Current verified baseline
+## Latest application verification — 2026-09-09
+
+Application commit `0146705ff95b05e3a382130976bad2a296756f17` passed a
+[fresh CI rerun](https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/33873683288/attempts/2)
+on 2026-09-09. It also passed the
+[full-stack demo](https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/34328693950) that day
+and [CodeQL](https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/34105987836) on 2026-09-07.
+
+The [retained verification summary](verification/2026-09-09.md) records the tested commit, run
+attempt, 106 passing tests, coverage, completed gates, and artifact hashes. It remains readable
+when the downloadable workflow artifacts expire. These results apply to the specified application
+commit; the older release below remains a separate artifact.
+
+## Historical baseline — 2026-08-04
 
 The 2026-08-04 local verification for commit `7e15cf45eaa6c3b23ffafec078cf53f8b1d8cb01`
 is recorded in [issue #3](https://github.com/adnanjalloh/WorkOps.Platform/issues/3) and
@@ -54,11 +67,11 @@ code-signing mechanism or evidence of a production deployment.
 
 ## Public hosted evidence
 
-The reviewed default-branch commit has public workflow results for:
+The application commit named in the latest verification report has public workflow results for:
 
-- [CI](https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/30727069465);
-- [CodeQL](https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/30727069476);
-- [full-stack demo](https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/30727906844).
+- [CI, attempt 2](https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/33873683288/attempts/2);
+- [CodeQL](https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/34105987836);
+- [full-stack demo](https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/34328693950).
 
 These links are historical run evidence. Workflow configuration alone is not treated as a timeless passing scan result.
 
