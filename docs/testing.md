@@ -67,6 +67,11 @@ The later [work-item query/recovery report](verification/2026-09-11-work-item-qu
 code is included in those totals; the report documents the specific behavioral regressions and
 keeps hosted workflow results separate from local verification.
 
+The [servicing alignment report](verification/2026-09-11-dotnet-alignment.md) subsequently verifies
+the same 134 cases with SDK `10.0.401`, runtime/platform packages `10.0.12`, Test SDK `18.10.0`, and
+OpenAPI.NET `2.12.0`. The refreshed hosted scenario exercises Bash and PowerShell fresh/replay paths;
+its final run links are tracked on the implementation PR, separately from local test evidence.
+
 [public full-stack run]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/34328693950
 [CI]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/33873683288/attempts/2
 [CodeQL]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/34105987836
@@ -83,7 +88,7 @@ tests use `TimeProvider`; tests do not depend on sleeps or local time.
 
 ## Commands
 
-Use the SDK selected by `global.json` (`10.0.400`, with compatible patch roll-forward) and a
+Use the SDK selected by `global.json` (`10.0.401`, with compatible patch roll-forward) and a
 running Docker daemon for the integration and functional suites. Run these commands from the
 repository root.
 
@@ -137,8 +142,17 @@ Check for unrelated dependency churn before committing. The unlocked restore abo
 maintenance step; CI and release builds continue to use `--locked-mode`. Keep the required checks
 enabled and refresh a PR against `master` when branch protection requires it.
 
-Dependabot groups `OpenTelemetry.*`, `MSTest.*`, and `github/codeql-action/*` in
-[its configuration](../.github/dependabot.yml). Keep MSTest's adapter and framework compatible,
+Dependabot groups related Microsoft platform/OpenAPI packages, `OpenTelemetry.*`, `MSTest.*`,
+`github/codeql-action/*`, and .NET Docker images in [its configuration](../.github/dependabot.yml).
+The Microsoft package group covers patch/minor updates; major upgrades still need separate review.
+Keep MSTest's adapter and framework compatible,
 and pin CodeQL `init` and `analyze` to the same release commit. Grouping prevents split updates but
 does not replace solution-wide lockfile regeneration or compatibility review. If one PR supersedes
 another, merge the verified replacement before closing the redundant PR.
+
+For a .NET servicing update, align `global.json`, both Dockerfile images, all `setup-dotnet` pins
+in CI/CodeQL/release workflows, centrally managed Microsoft platform packages, and `dotnet-ef` in
+`.config/dotnet-tools.json`. SDK and runtime version numbers differ: SDK `10.0.401` contains runtime
+`10.0.12`. Grouping cannot update every cross-file/cross-ecosystem pin or guarantee complete
+lockfiles; retain bootstrap's SDK-alignment check and refresh the whole solution. Respect new
+transitive requirements such as ASP.NET Core OpenAPI's minimum Microsoft.OpenApi version.

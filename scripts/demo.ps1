@@ -119,10 +119,36 @@ function Show-Summary([string]$WorkspaceId, [string]$ProjectId, [string]$WorkIte
     Write-Host "  API URL:          $ApiUrl"
     Write-Host "  Identity URL:     $IdentityUrl"
     Write-Host '  Scenario status:  passed'
-    Write-Host '  Evidence checks:  authorization, tenant isolation, concurrency, audit, outbox notification'
+    Write-Host '  Evidence checks:  filtering, authorization, tenant isolation, concurrency, audit, outbox notification'
     Write-Host "  Evidence path:    $EvidenceDirectory"
     Write-Host '  Cleanup command:  ./scripts/bootstrap.ps1 -Cleanup'
     Write-Host '  Tokens:           not intentionally printed or persisted by this script'
+}
+
+function Test-FilteredWorkItem(
+    [string]$WorkspaceId,
+    [string]$ProjectId,
+    [string]$WorkItemId,
+    [string]$AssigneeUserId,
+    [string]$OutsiderWorkspaceId
+) {
+    $query = "/api/v1/work-items/?page=1&pageSize=20&projectId=$ProjectId&status=InProgress&assigneeUserId=$AssigneeUserId&search=tenant"
+    Write-Step 'Finding assigned work with combined filters'
+    $filtered = Invoke-JsonApi GET $query $contributorToken $WorkspaceId
+    Assert-Status $filtered 200 'filtered work-item list'
+    if ($filtered.Body.page -ne 1 -or $filtered.Body.pageSize -ne 20 -or
+        $filtered.Body.totalCount -ne 1 -or @($filtered.Body.items).Count -ne 1 -or
+        $filtered.Body.items[0].id -ne $WorkItemId) {
+        throw 'Combined filters did not return exactly the expected work item.'
+    }
+    Write-Pass 'project, status, assignee, and title filters returned the expected work item'
+
+    $foreign = Invoke-JsonApi GET $query $outsiderToken $OutsiderWorkspaceId
+    Assert-Status $foreign 200 'foreign project filter'
+    if ($foreign.Body.totalCount -ne 0 -or @($foreign.Body.items).Count -ne 0) {
+        throw 'Foreign project filter exposed rows or counts.'
+    }
+    Write-Pass 'the same filters in the outsider workspace returned no rows or counts'
 }
 
 if ($Start) {
@@ -155,6 +181,9 @@ if (Test-Path $StateFile) {
             Write-Step 'Reusing the saved idempotent demo state'
             Write-Pass 'existing work item is visible to its contributor'
 
+            Test-FilteredWorkItem $state.workspaceId $state.projectId $state.workItemId `
+                $current.Body.assigneeUserId $state.outsiderWorkspaceId
+
             $stale = Invoke-JsonApi POST "/api/v1/work-items/$($state.workItemId)/transitions" `
                 $contributorToken $state.workspaceId @{
                     targetStatus = 'Blocked'
@@ -175,7 +204,7 @@ if (Test-Path $StateFile) {
     }
 }
 
-$runId = [DateTimeOffset]::UtcNow.ToString('yyyyMMddHHmmss')
+$runId = [DateTimeOffset]::UtcNow.ToString('yyyyMMddHHmmss') + '-' + [Guid]::NewGuid().ToString('N').Substring(0, 10)
 
 Write-Step 'Creating two isolated workspaces'
 $ownerWorkspace = Invoke-JsonApi POST '/api/v1/workspaces/' $ownerToken '' @{
@@ -260,6 +289,8 @@ $transitioned = Invoke-JsonApi POST "/api/v1/work-items/$workItemId/transitions"
 Assert-Status $transitioned 200 'work-item transition'
 $currentVersion = $transitioned.Body.version
 Write-Pass 'work item moved from Backlog to InProgress'
+
+Test-FilteredWorkItem $workspaceId $projectId $workItemId $contributorUserId $outsiderWorkspaceId
 
 Write-Step 'Checking stale-write and tenant boundaries'
 $staleWrite = Invoke-JsonApi POST "/api/v1/work-items/$workItemId/transitions" $contributorToken $workspaceId @{

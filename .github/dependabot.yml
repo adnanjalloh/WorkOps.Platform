@@ -6,6 +6,15 @@ updates:
       interval: weekly
     open-pull-requests-limit: 5
     groups:
+      dotnet-platform:
+        patterns:
+          - "Microsoft.AspNetCore.*"
+          - "Microsoft.EntityFrameworkCore*"
+          - "Microsoft.Extensions.*"
+          - "Microsoft.OpenApi"
+        update-types:
+          - "patch"
+          - "minor"
       opentelemetry:
         patterns:
           - "OpenTelemetry.*"
@@ -28,3 +37,8 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    groups:
+      dotnet-images:
+        patterns:
+          - "*dotnet/sdk"
+          - "*dotnet/aspnet"

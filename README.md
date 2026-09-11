@@ -42,7 +42,7 @@ Docker · OpenTelemetry · GitHub Actions.
 ./scripts/demo.sh --start
 ```
 
-The script checks project creation, request replay, a work-item update, blocked access, a rejected
+The script checks project creation, request replay, a work-item update and filtered listing, blocked access, a rejected
 stale edit, and an audit entry with a delivered notification.
 For a live presentation, use the [two-minute interview walkthrough](docs/interview-walkthrough.md).
 
@@ -182,7 +182,7 @@ and create no duplicate demo records. Stop the stack without deleting its databa
 `./scripts/bootstrap.sh --cleanup` or `./scripts/bootstrap.ps1 -Cleanup`; both preserve named
 volumes.
 
-For a code-only start, install the .NET SDK specified in `global.json` (currently `10.0.400`)
+For a code-only start, install the .NET SDK specified in `global.json` (currently `10.0.401`)
 and configure the API's database and identity dependencies as described in
 [operations](docs/operations.md):
 
@@ -224,6 +224,10 @@ CI merges coverage, publishes HTML/Cobertura/Markdown evidence, and enforces the
 its synthetic evidence for credential-like content, and blocks unsafe output. See [testing](docs/testing.md).
 
 ## Verification and release
+
+The [2026-09-11 servicing alignment report](docs/verification/2026-09-11-dotnet-alignment.md)
+records 134 passing cases after the coordinated SDK/runtime/package update, plus lockfile, model,
+and demo-script checks. Hosted CI and full-stack results are linked separately from its local evidence.
 
 The [2026-09-11 dependency repair report](docs/verification/2026-09-11.md) records local verification
 of the OpenTelemetry/Redis upgrades: locked restore, formatting, a zero-warning Release build,
