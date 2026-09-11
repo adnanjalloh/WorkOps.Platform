@@ -48,8 +48,15 @@ ReportGenerator reports 91.3% lines (8,428/9,227), 51.3% branches (648/1,261), a
 unchanged; generated migration/snapshot code remains included. These values match the previous
 query/recovery source's coverage and do not imply new application behavior or higher scale.
 
-PowerShell syntax was checked using the cached PowerShell `7.4.7` Linux amd64 container on this
-arm64 host. That syntax check alone is not evidence of an end-to-end script run or Windows support.
+The local Docker build also passed using the updated SDK/runtime images. Bash fresh and saved-state
+replay scenarios passed against an isolated Compose project on loopback ports 18080/18081. PowerShell
+`7.4.7` fresh and replay scenarios passed from the cached Linux amd64 container on this arm64 host.
+All four logs passed the credential screen. This is not Windows validation. The temporary stack was
+stopped afterward, retaining its synthetic database volume and leaving unrelated containers running.
+
+Review caught a stale SDK prerequisite in `CONTRIBUTING.md`; it was aligned with `global.json` at
+`10.0.401`. A repository-wide version search found only deliberately dated verification evidence and
+generated migration metadata retaining the older versions.
 
 ## Reproduction and hosted boundaries
 
@@ -62,11 +69,17 @@ dotnet ef migrations has-pending-model-changes --project src/WorkOps.Infrastruct
   --startup-project src/WorkOps.Infrastructure --configuration Release --no-build
 ```
 
-Required CI, CodeQL, dependency review, and the refreshed full-stack workflow are separate hosted
-evidence tracked on [PR #67](https://github.com/adnanjalloh/WorkOps.Platform/pull/67). The full-stack
-workflow targets fresh and replay paths for both Bash and PowerShell on a Linux runner and screens
-all logs before display/upload. The final PR records completed run links; workflow configuration
-alone is not a passing result.
+The [refreshed full-stack run](https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/34623237649)
+passed fresh and replay paths for both Bash and PowerShell on a Linux runner, using implementation
+commit `589725ae5d4d256bd57ddd8e5b24e14d523c16df`. Its four scenario logs passed the credential screen.
+
+[CI](https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/34623341488),
+[CodeQL](https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/34623341433), and
+[dependency review](https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/34623341449) passed on
+documentation-update commit `a83a21ffcbcd534a55f4d81add29da71b4e057af`. Later changes only correct the
+contributor prerequisite and record these results; application sources, scripts, workflow files,
+and dependency pins remain identical. Final-head required checks are tracked on
+[PR #67](https://github.com/adnanjalloh/WorkOps.Platform/pull/67) before merge.
 
 No new release, package publication, production deployment, narrated video, Windows test run, or
 production-readiness claim is made. Earlier verification reports remain dated historical evidence.
