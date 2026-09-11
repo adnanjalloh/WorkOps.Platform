@@ -22,7 +22,7 @@ first release.
 - Group related Microsoft platform/OpenAPI updates and .NET container images for maintenance.
 - Refresh the two-minute interview guide and both demo scripts to demonstrate combined filters
   and isolated result counts; exercise Bash/PowerShell fresh and replay paths in the hosted scenario.
-- Update Microsoft.NET.Test.Sdk to 18.9.0 and the MSTest adapter/framework together to 4.4.0.
+- Update the MSTest adapter/framework together to 4.4.0.
 - Refresh pinned release actions to anchore/sbom-action 0.24.2 and softprops/action-gh-release 3.0.3.
 - Upgrade OpenTelemetry packages together to 1.18.0 and StackExchange.Redis to 3.1.31.
 - Update CodeQL initialization and analysis together to the pinned 4.37.9 release.

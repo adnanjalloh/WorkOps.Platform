@@ -225,6 +225,10 @@ its synthetic evidence for credential-like content, and blocks unsafe output. Se
 
 ## Verification and release
 
+The [2026-09-11 servicing alignment report](docs/verification/2026-09-11-dotnet-alignment.md)
+records 134 passing cases after the coordinated SDK/runtime/package update, plus lockfile, model,
+and demo-script checks. Hosted CI and full-stack results are linked separately from its local evidence.
+
 The [2026-09-11 dependency repair report](docs/verification/2026-09-11.md) records local verification
 of the OpenTelemetry/Redis upgrades: locked restore, formatting, a zero-warning Release build,
 106 passing tests, coverage gates, and a clean dependency audit. It identifies the tested source

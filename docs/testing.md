@@ -67,6 +67,11 @@ The later [work-item query/recovery report](verification/2026-09-11-work-item-qu
 code is included in those totals; the report documents the specific behavioral regressions and
 keeps hosted workflow results separate from local verification.
 
+The [servicing alignment report](verification/2026-09-11-dotnet-alignment.md) subsequently verifies
+the same 134 cases with SDK `10.0.401`, runtime/platform packages `10.0.12`, Test SDK `18.10.0`, and
+OpenAPI.NET `2.12.0`. The refreshed hosted scenario exercises Bash and PowerShell fresh/replay paths;
+its final run links are tracked on the implementation PR, separately from local test evidence.
+
 [public full-stack run]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/34328693950
 [CI]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/33873683288/attempts/2
 [CodeQL]: https://github.com/adnanjalloh/WorkOps.Platform/actions/runs/34105987836

@@ -2,6 +2,13 @@
 
 This page separates dated generated evidence from repository configuration and future work. Results apply only to the referenced commit and environment.
 
+## Local .NET servicing alignment verification — 2026-09-11
+
+The [servicing alignment report](verification/2026-09-11-dotnet-alignment.md) records SDK `10.0.401`,
+runtime/platform packages `10.0.12`, Test SDK `18.10.0`, and OpenAPI.NET `2.12.0` passing locked
+restore, a zero-warning build, all 134 cases, coverage gates, and dependency/model checks. It
+identifies the tested commit and separates local results from hosted checks for the refreshed demo.
+
 ## Local work-item query and recovery verification — 2026-09-11
 
 The [query/recovery report](verification/2026-09-11-work-item-queries.md) records all 134 cases
