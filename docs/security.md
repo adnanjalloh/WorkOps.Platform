@@ -38,6 +38,9 @@ certification claim or production-suitability claim.
   logging that records metadata rather than submitted values;
 - tenant-filtered project and work-item queries backed by composite workspace ownership constraints;
 - invitation role limits and active-current-workspace validation for work-item assignment;
+- guarded membership role changes and deactivation: owner/administrator target-role limits,
+  serialized last-active-owner protection, fresh caller authorization after the workspace lock,
+  expected versions, atomic audit, and current database permissions on subsequent requests;
 - allowlisted state transitions, priorities, labels, search terms, and page bounds;
 - opaque PostgreSQL `xmin` concurrency tokens with stale updates mapped to `409 Conflict`;
 - tenant-filtered audit, outbox, inbox, and notification data with composite ownership constraints;
@@ -86,6 +89,11 @@ certification claim or production-suitability claim.
 
 The [OWASP ASVS 5.0 map](asvs-map.md) connects implemented controls to review evidence. It is a
 navigation aid, not a certification or a claim that every requirement in a referenced area passes.
+
+The [member-management contract](member-management.md) defines exact authority, conflict, and
+revocation semantics. Deactivation is workspace-local, preserves data, and does not revoke a token
+globally or cancel unrelated requests/messages already in flight. Waiting membership mutations,
+including invitations, recheck current authority inside their transaction.
 
 The demo scripts write only synthetic IDs and opaque versions to the ignored `.local/` directory;
 tokens are not intentionally printed or persisted. The `.http` collection contains only the

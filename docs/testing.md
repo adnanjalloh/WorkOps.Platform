@@ -2,19 +2,19 @@
 
 ## Current evidence
 
-The current suite includes four test projects with 134 test cases:
+The current suite includes four test projects with 160 test cases:
 
-- Unit: 61 tests for workspace identifiers, sanitization malicious corpus, role permissions, project archiving,
+- Unit: 65 tests for workspace identifiers, sanitization malicious corpus, role permissions, project archiving,
   work-item state transitions and updates, version-token conversion, background tenant context,
   message validation, outbox lifecycle, deterministic retry policy, processor outcomes, feature
   quotas, filename/media-type sanitization, and attachment size/type/signature validation.
-- Integration: 25 tests against real PostgreSQL migrations and default-deny query filters, including switching
+- Integration: 41 tests against real PostgreSQL migrations and default-deny query filters, including switching
   between two workspaces, a two-context optimistic-concurrency collision, concurrent outbox lease
   contention, durable publisher-confirmed routing through a real RabbitMQ container, tenant-aware
   cache isolation and invalidation through a real Redis container, concurrent quota reservations,
   tenant-separated local file paths, and missing/cross-workspace write rejection for insert, update,
   delete, and workspace-ID mutation paths.
-- Functional: 40 tests using real PostgreSQL plus the ASP.NET Core host, locally signed test JWTs,
+- Functional: 46 tests using real PostgreSQL plus the ASP.NET Core host, locally signed test JWTs,
   exact OIDC-subject validation and preservation, token rejection,
   cross-workspace denial, permissions, suspension, inactive membership, malicious input, project
   lifecycle, invitation and assignment boundaries, labeled work-item updates and transitions,
@@ -27,6 +27,14 @@ The current suite includes four test projects with 134 test cases:
 - Architecture: 8 tests for dependency direction, request sanitization-policy coverage,
   model-driven query-filter/write-resolver coverage, verification checkout policy, Docker-context
   security patterns, API persistence boundaries, and public-contract isolation.
+
+The [member-management enhancement](member-management.md) adds four unit cases, six HTTP cases,
+and sixteen PostgreSQL cases. They cover role authority, last-owner races, optimistic conflicts,
+revocation with existing tokens, waiting requests with stale authority (including invitations),
+tenant-scoped locks, cancellation, fresh workspace suspension checks, post-save rollback, and migration upgrade/downgrade. Tests use
+coordinated database-command gates to exercise concurrent operations without timing sleeps.
+The [2026-09-12 verification report](verification/2026-09-12-member-management.md) records all 160
+cases and coverage gates at their tested source commit, separately from hosted PR checks.
 
 The work-item query enhancement adds 19 HTTP cases for roles, foreign rows/counts, deterministic
 paging, combined filters, literal search, and query validation. Eight unit cases cover outbox

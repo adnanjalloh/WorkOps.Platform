@@ -19,6 +19,7 @@ internal sealed class WorkspaceMembershipConfiguration : IEntityTypeConfiguratio
             .HasConversion<string>()
             .HasMaxLength(32)
             .IsRequired();
+        builder.Property(membership => membership.Version).IsRowVersion();
 
         builder.HasOne<Workspace>()
             .WithMany()

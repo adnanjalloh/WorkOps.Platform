@@ -27,6 +27,20 @@ The local Keycloak realm contains four synthetic demo users and an audience mapp
 through the private Compose hostname while validating the public local issuer. This password-grant
 realm exists only for the local scripted demo and must not be promoted to a deployment.
 
+## Membership administration
+
+Use the [versioned member-management endpoints](member-management.md) for role changes and
+deactivation. Preserve at least one active owner; a stale version requires reading current state
+and reassessing the change. Deactivation does not delete assignments/history or revoke the external
+identity account. Requests already executing outside the membership transaction may finish.
+
+The `MembershipConcurrency` migration maps the existing PostgreSQL `xmin` system column and
+updates migration history, without adding/dropping a physical column or rewriting memberships.
+Upgrade/downgrade is covered on an isolated database. Rolling back the application removes the new
+HTTP routes but does not restore roles or reactivate members changed through them; migration rollback
+does not undo business actions. Future scripts or writers must preserve the common workspace-lock
+ordering and last-owner invariant.
+
 ## Cache and attachment configuration
 
 `Cache:Enabled` is false by default. When enabled, `ConnectionStrings:Redis` is required. Cache

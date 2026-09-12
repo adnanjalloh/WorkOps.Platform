@@ -1150,6 +1150,15 @@ public sealed partial class TenantQueryFilterTests
         public Task<Workspace?> GetCurrentAsync(CancellationToken cancellationToken) =>
             inner.GetCurrentAsync(cancellationToken);
 
+        public Task<Workspace?> LockCurrentForMembershipChangeAsync(CancellationToken cancellationToken) =>
+            inner.LockCurrentForMembershipChangeAsync(cancellationToken);
+
+        public Task<WorkspaceMemberView?> GetCurrentMemberAsync(Guid userId, CancellationToken cancellationToken) =>
+            inner.GetCurrentMemberAsync(userId, cancellationToken);
+
+        public Task<bool> HasOtherActiveOwnerAsync(Guid userId, CancellationToken cancellationToken) =>
+            inner.HasOtherActiveOwnerAsync(userId, cancellationToken);
+
         public Task<IReadOnlyList<WorkspaceMemberView>> ListCurrentMembersAsync(
             CancellationToken cancellationToken) =>
             inner.ListCurrentMembersAsync(cancellationToken);

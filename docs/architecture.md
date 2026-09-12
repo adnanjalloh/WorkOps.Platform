@@ -69,6 +69,14 @@ Project and work-item rows carry a non-null workspace identifier. A composite fo
 a work item from pointing to a project in another workspace, while assignment is accepted only for
 an active member of the current workspace.
 
+## Membership changes
+
+Membership invitation, role changes, and deactivation serialize on the current workspace row,
+then recheck the caller's active role before applying changes. Expected membership versions prevent
+stale edits; the shared row lock protects the cross-member last-owner invariant. The membership
+change and audit record commit in one transaction. See the [member contract](member-management.md)
+and [ADR 0007](adr/0007-member-lifecycle-concurrency.md) for authority and revocation boundaries.
+
 ## Implemented work-item sequence
 
 ```mermaid
@@ -164,3 +172,4 @@ on the next use of the same scoped key.
 - [ADR 0004 - OIDC provider boundary](adr/0004-oidc-provider-boundary.md)
 - [ADR 0005 - file storage security](adr/0005-file-storage-security.md)
 - [ADR 0006 - HTTP idempotency](adr/0006-http-idempotency.md)
+- [ADR 0007 - member lifecycle concurrency](adr/0007-member-lifecycle-concurrency.md)

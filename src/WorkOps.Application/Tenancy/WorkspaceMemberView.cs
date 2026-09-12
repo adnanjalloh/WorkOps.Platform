@@ -6,4 +6,5 @@ public sealed record WorkspaceMemberView(
     Guid UserId,
     string DisplayName,
     WorkspaceRole Role,
-    bool IsActive);
+    bool IsActive,
+    uint Version);

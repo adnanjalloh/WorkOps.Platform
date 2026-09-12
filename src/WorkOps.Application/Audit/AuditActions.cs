@@ -4,6 +4,8 @@ public static class AuditActions
 {
     public const string WorkspaceCreated = "workspace.created";
     public const string MemberInvited = "member.invited";
+    public const string MemberRoleChanged = "member.role_changed";
+    public const string MemberDeactivated = "member.deactivated";
     public const string ProjectCreated = "project.created";
     public const string ProjectArchived = "project.archived";
     public const string WorkItemCreated = "work_item.created";

@@ -26,6 +26,14 @@ internal static class WorkspaceEndpoints
             .WithMetadata(new WorkspaceContextRequirement(WorkspaceContextSource.Route))
             .RequireAuthorization(Permissions.MembersManage)
             .WithName("InviteWorkspaceMember");
+        group.MapMethods("/{workspaceId:guid}/members/{userId:guid}/role", [HttpMethods.Patch], ChangeMemberRoleAsync)
+            .WithMetadata(new WorkspaceContextRequirement(WorkspaceContextSource.Route))
+            .RequireAuthorization(Permissions.MembersManage)
+            .WithName("ChangeWorkspaceMemberRole");
+        group.MapPost("/{workspaceId:guid}/members/{userId:guid}/deactivation", DeactivateMemberAsync)
+            .WithMetadata(new WorkspaceContextRequirement(WorkspaceContextSource.Route))
+            .RequireAuthorization(Permissions.MembersManage)
+            .WithName("DeactivateWorkspaceMember");
 
         return endpoints;
     }
@@ -44,11 +52,36 @@ internal static class WorkspaceEndpoints
             cancellationToken);
         return Results.Created(
             $"/api/v1/workspaces/{workspaceId:D}/members",
-            new WorkspaceMemberResponse(
-                member.UserId,
-                member.DisplayName,
-                member.Role.ToString(),
-                member.IsActive));
+            ToMemberResponse(member));
+    }
+
+    private static async Task<IResult> ChangeMemberRoleAsync(
+        [SkipSanitization(Reason = "The route workspace is parsed as a non-empty Guid and authorized by workspace middleware.")]
+        Guid workspaceId,
+        [SkipSanitization(Reason = "The route member ID is parsed as a Guid and rejects an empty Guid in the service.")]
+        Guid userId,
+        ChangeWorkspaceMemberRoleRequest request,
+        WorkspaceMembershipService membershipService,
+        CancellationToken cancellationToken)
+    {
+        _ = workspaceId;
+        var member = await membershipService.ChangeRoleAsync(
+            userId, request.Role, request.ExpectedVersion, cancellationToken);
+        return member is null ? Results.NotFound() : Results.Ok(ToMemberResponse(member));
+    }
+
+    private static async Task<IResult> DeactivateMemberAsync(
+        [SkipSanitization(Reason = "The route workspace is parsed as a non-empty Guid and authorized by workspace middleware.")]
+        Guid workspaceId,
+        [SkipSanitization(Reason = "The route member ID is parsed as a Guid and rejects an empty Guid in the service.")]
+        Guid userId,
+        DeactivateWorkspaceMemberRequest request,
+        WorkspaceMembershipService membershipService,
+        CancellationToken cancellationToken)
+    {
+        _ = workspaceId;
+        var member = await membershipService.DeactivateAsync(userId, request.ExpectedVersion, cancellationToken);
+        return member is null ? Results.NotFound() : Results.Ok(ToMemberResponse(member));
     }
 
     private static async Task<IResult> CreateWorkspaceAsync(
@@ -86,12 +119,12 @@ internal static class WorkspaceEndpoints
     {
         _ = workspaceId;
         var members = await workspaceService.ListCurrentMembersAsync(cancellationToken);
-        return Results.Ok(members.Select(member => new WorkspaceMemberResponse(
-            member.UserId,
-            member.DisplayName,
-            member.Role.ToString(),
-            member.IsActive)));
+        return Results.Ok(members.Select(ToMemberResponse));
     }
+
+    private static WorkspaceMemberResponse ToMemberResponse(WorkspaceMemberView member) => new(
+        member.UserId, member.DisplayName, member.Role.ToString(), member.IsActive,
+        MembershipVersion.Encode(member.Version));
 
     private static WorkspaceResponse ToResponse(WorkOps.Domain.Tenancy.Workspace workspace) => new(
         workspace.Id.Value,

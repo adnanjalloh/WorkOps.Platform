@@ -9,6 +9,7 @@ using WorkOps.Application.Tenancy;
 using WorkOps.Application.WorkItems;
 using WorkOps.Domain.Features;
 using WorkOps.Domain.Messaging;
+using WorkOps.Domain.Tenancy;
 using WorkOps.Domain.WorkItems;
 
 namespace WorkOps.Api.Errors;
@@ -28,6 +29,30 @@ internal sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) :
     {
         switch (exception)
         {
+            case MembershipManagementForbiddenException:
+                await WriteProblemAsync(
+                    httpContext, StatusCodes.Status403Forbidden,
+                    "Membership management is not permitted", "membership_management_forbidden", cancellationToken);
+                return true;
+
+            case WorkspaceAccessRevokedException:
+                await WriteProblemAsync(
+                    httpContext, StatusCodes.Status404NotFound,
+                    "Resource not found", "workspace_not_found", cancellationToken);
+                return true;
+
+            case LastWorkspaceOwnerException:
+                await WriteProblemAsync(
+                    httpContext, StatusCodes.Status409Conflict,
+                    "The last active workspace owner must be retained", "last_workspace_owner", cancellationToken);
+                return true;
+
+            case InactiveWorkspaceMembershipException:
+                await WriteProblemAsync(
+                    httpContext, StatusCodes.Status409Conflict,
+                    "Inactive membership cannot change role", "inactive_workspace_membership", cancellationToken);
+                return true;
+
             case InputRejectedException rejected:
                 LogInputRejected(
                     logger,
