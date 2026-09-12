@@ -230,6 +230,10 @@ its synthetic evidence for credential-like content, and blocks unsafe output. Se
 
 ## Verification and release
 
+The [2026-09-12 member-management report](docs/verification/2026-09-12-member-management.md) records
+160 passing cases, the security/concurrency self-review, and migration compatibility at its tested
+source commit. Hosted final-head evidence is tracked separately on the implementation PR.
+
 The [2026-09-11 servicing alignment report](docs/verification/2026-09-11-dotnet-alignment.md)
 records 134 passing cases after the coordinated SDK/runtime/package update, plus lockfile, model,
 and demo-script checks. Hosted CI and full-stack results are linked separately from its local evidence.

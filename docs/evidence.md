@@ -2,6 +2,14 @@
 
 This page separates dated generated evidence from repository configuration and future work. Results apply only to the referenced commit and environment.
 
+## Local member-management verification — 2026-09-12
+
+The [member-management report](verification/2026-09-12-member-management.md) records 160 passing
+cases, 92.2% line / 53.9% branch coverage at the existing gates, a zero-warning Release build,
+locked restore, dependency/model checks, and isolated migration upgrade/downgrade. It documents
+the author self-review, deterministic owner races, stale-authority regressions, and rollback
+evidence. Final-head hosted results are recorded separately on [PR #73](https://github.com/adnanjalloh/WorkOps.Platform/pull/73).
+
 ## Local .NET servicing alignment verification — 2026-09-11
 
 The [servicing alignment report](verification/2026-09-11-dotnet-alignment.md) records SDK `10.0.401`,

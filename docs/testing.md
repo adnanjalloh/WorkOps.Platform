@@ -33,6 +33,8 @@ and sixteen PostgreSQL cases. They cover role authority, last-owner races, optim
 revocation with existing tokens, waiting requests with stale authority (including invitations),
 tenant-scoped locks, cancellation, fresh workspace suspension checks, post-save rollback, and migration upgrade/downgrade. Tests use
 coordinated database-command gates to exercise concurrent operations without timing sleeps.
+The [2026-09-12 verification report](verification/2026-09-12-member-management.md) records all 160
+cases and coverage gates at their tested source commit, separately from hosted PR checks.
 
 The work-item query enhancement adds 19 HTTP cases for roles, foreign rows/counts, deterministic
 paging, combined filters, literal search, and query validation. Eight unit cases cover outbox
