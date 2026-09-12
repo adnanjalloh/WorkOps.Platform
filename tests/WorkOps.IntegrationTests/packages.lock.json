@@ -70,11 +70,11 @@
       },
       "Testcontainers.Redis": {
         "type": "Direct",
-        "requested": "[4.14.0, )",
-        "resolved": "4.14.0",
-        "contentHash": "PxqR44lftGtHxiIXtQtCsfQkjJmWnDuWk/Mz20p1pt9CUo+SRqpotGwG0EYgsOq9Qv5diZgMQp0Cyo2FzCqocg==",
+        "requested": "[4.15.0, )",
+        "resolved": "4.15.0",
+        "contentHash": "au2OSaAQwn3W6Q2QZsYUig2Smbi0xdAZQhyjynjK10Hhf0HokhsADtGjRdXefqjSIpq49Yqpkh7QjhD7hvMwAQ==",
         "dependencies": {
-          "Testcontainers": "4.14.0"
+          "Testcontainers": "4.15.0"
         }
       },
       "BouncyCastle.Cryptography": {
