@@ -24,7 +24,8 @@ first release.
   and isolated result counts; exercise Bash/PowerShell fresh and replay paths in the hosted scenario.
 - Update the MSTest adapter/framework together to 4.4.0.
 - Refresh pinned release actions to anchore/sbom-action 0.24.2 and softprops/action-gh-release 3.0.3.
-- Upgrade OpenTelemetry packages together to 1.18.0 and StackExchange.Redis to 3.1.31.
+- Upgrade OpenTelemetry packages together to 1.18.0 and StackExchange.Redis to 3.2.0.
+- Update the PostgreSQL, RabbitMQ, and Redis Testcontainers modules to 4.15.0.
 - Update CodeQL initialization and analysis together to the pinned 4.37.9 release.
 - Group related OpenTelemetry, MSTest, and CodeQL Dependabot updates and document solution-wide
   lockfile refresh, required checks, and superseded-PR handling.
