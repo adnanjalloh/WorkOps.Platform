@@ -17,6 +17,13 @@ public interface IWorkspaceStore
 
     Task<bool> IsCurrentMemberActiveAsync(Guid userId, CancellationToken cancellationToken);
 
+    // Must be called inside the same transaction as all membership mutations and their audit writes.
+    Task<Workspace?> LockCurrentForMembershipChangeAsync(CancellationToken cancellationToken);
+
+    Task<WorkspaceMemberView?> GetCurrentMemberAsync(Guid userId, CancellationToken cancellationToken);
+
+    Task<bool> HasOtherActiveOwnerAsync(Guid userId, CancellationToken cancellationToken);
+
     Task<Workspace?> GetCurrentAsync(CancellationToken cancellationToken);
 
     Task<IReadOnlyList<WorkspaceMemberView>> ListCurrentMembersAsync(CancellationToken cancellationToken);

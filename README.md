@@ -7,6 +7,9 @@ keeps each workspace's data separate and records changes with an audit trail and
 Members can [browse and filter work items](docs/work-item-queries.md) by project, status, assignee,
 and title, with bounded pagination and stable newest-first ordering.
 
+Owners can [change member roles and deactivate workspace access](docs/member-management.md),
+with last-owner protection, stale-edit rejection, and audited permission changes.
+
 Built by **Adnan Alloh, Senior .NET Backend Engineer in Mannheim, Germany**.
 
 The project demonstrates how I handle problems that come up in business software:
@@ -216,9 +219,11 @@ dotnet build -c Release --no-restore
 dotnet test -c Release --no-build --logger "trx" --collect:"XPlat Code Coverage"
 ```
 
-The 134 tests comprise 61 unit, 25 PostgreSQL/Redis/RabbitMQ/storage integration, 40 full-host
-functional, and 8 architecture tests. The [2026-09-11 query/recovery report](docs/verification/2026-09-11-work-item-queries.md)
-records 91.3% line and 51.3% branch coverage, including generated migration code.
+The 160 tests comprise 65 unit, 41 PostgreSQL/Redis/RabbitMQ/storage integration, 46 full-host
+functional, and 8 architecture tests. The [member-management test map](docs/member-management.md#compatibility-and-evidence)
+covers authority, revocation, concurrent owner changes, rollback, and migration compatibility.
+The historical [2026-09-11 query/recovery report](docs/verification/2026-09-11-work-item-queries.md)
+records 91.3% line and 51.3% branch coverage for its earlier 134-test source, including generated migration code.
 CI merges coverage, publishes HTML/Cobertura/Markdown evidence, and enforces the 70% line
 / 35% branch floors. A scheduled/manual workflow runs the complete Compose golden scenario, screens
 its synthetic evidence for credential-like content, and blocks unsafe output. See [testing](docs/testing.md).

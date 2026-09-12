@@ -8,6 +8,11 @@ first release.
 
 ### Added
 
+- Workspace member role changes and deactivation with owner/administrator authority limits,
+  last-active-owner protection, opaque concurrency versions, transactional audit, and fresh
+  permission checks after tenant-scoped locking, including the invitation path.
+- Membership HTTP abuse cases, PostgreSQL concurrency/cancellation/rollback tests, and migration
+  upgrade/downgrade verification for the existing `xmin` system-column mapping.
 - Tenant-scoped work-item listing with bounded, stable pagination and composable project, status,
   assignee, and literal title filters; supporting indexes, API examples, and HTTP boundary tests.
 - Messaging recovery tests for cancellation, exhausted retries, abandoned leases, and notification
@@ -33,6 +38,7 @@ first release.
 
 ### Fixed
 
+- Reject numeric membership-role values instead of accepting enum ordinals in invitations.
 - Clear an uncommitted outbox completion timestamp when a failed completion save returns the message
   to pending or failed state, keeping retry status and diagnostics consistent.
 - Regenerate downstream NuGet lockfiles for centrally pinned dependencies so locked restore includes

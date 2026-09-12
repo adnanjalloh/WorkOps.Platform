@@ -12,7 +12,7 @@ Deferred items are not implementation claims; later work is linked to its own is
 | WO-04 Local observability stack | Deferred | OpenTelemetry remains opt-in; no local dashboard stack or production-monitoring claim is included. |
 | WO-05 Durable object storage | Deferred | The tenant-separated local storage adapter remains an explicit durability boundary. |
 | WO-06 Malware scanner adapter | Deferred | The development scanner remains a stub, while non-development configuration continues to fail closed. |
-| WO-07 Member lifecycle | Deferred | Invitation and membership listing remain the supported scope; lifecycle administration is not claimed. |
+| WO-07 Member lifecycle | Implemented, bounded scope | [Issue #72](https://github.com/adnanjalloh/WorkOps.Platform/issues/72): guarded role changes and deactivation, last-owner protection, concurrency and revocation regression tests; [contract and boundaries](../member-management.md). Reactivation, account deletion, and provider administration remain outside scope. |
 | WO-08 Work-item list and search | Implemented | [Issue #64](https://github.com/adnanjalloh/WorkOps.Platform/issues/64): bounded, tenant-scoped listing and composable filters; [query contract and tests](../work-item-queries.md). |
 | WO-09 Recovery and chaos evidence | Targeted regression coverage | Cancellation, retry exhaustion, expired-lease recovery, and completion-write failure/deduplication tests; no claim of a complete chaos or broker-outage suite. |
 | WO-10 Local performance evidence | Deferred | The bounded smoke script remains available, without production-scale or benchmark claims. |

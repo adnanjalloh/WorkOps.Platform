@@ -4,4 +4,5 @@ public sealed record WorkspaceMemberResponse(
     Guid UserId,
     string DisplayName,
     string Role,
-    bool IsActive);
+    bool IsActive,
+    string Version);

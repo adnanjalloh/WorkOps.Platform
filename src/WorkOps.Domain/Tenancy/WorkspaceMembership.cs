@@ -29,6 +29,8 @@ public sealed class WorkspaceMembership : IWorkspaceOwned
 
     public bool IsActive { get; private set; }
 
+    public uint Version { get; private set; }
+
     public DateTimeOffset CreatedAt { get; private set; }
 
     public DateTimeOffset? UpdatedAt { get; private set; }
@@ -37,10 +39,42 @@ public sealed class WorkspaceMembership : IWorkspaceOwned
         WorkspaceId workspaceId,
         Guid userId,
         WorkspaceRole role,
-        DateTimeOffset createdAt) => new(workspaceId, userId, role, createdAt);
+        DateTimeOffset createdAt)
+    {
+        if (!Enum.IsDefined(role))
+        {
+            throw new ArgumentOutOfRangeException(nameof(role));
+        }
+
+        return new(workspaceId, userId, role, createdAt);
+    }
+
+    public void ChangeRole(WorkspaceRole role, DateTimeOffset updatedAt)
+    {
+        if (!Enum.IsDefined(role))
+        {
+            throw new ArgumentOutOfRangeException(nameof(role));
+        }
+
+        if (!IsActive)
+        {
+            throw new InactiveWorkspaceMembershipException();
+        }
+
+        if (Role != role)
+        {
+            Role = role;
+            UpdatedAt = updatedAt;
+        }
+    }
 
     public void Deactivate(DateTimeOffset updatedAt)
     {
+        if (!IsActive)
+        {
+            return;
+        }
+
         IsActive = false;
         UpdatedAt = updatedAt;
     }
